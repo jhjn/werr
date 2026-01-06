@@ -22,11 +22,11 @@ def load_project(pyproject: Path, task: str) -> tuple[str, list[cmd.Command]]:
     if "tool" not in config or "werr" not in config["tool"]:
         raise ValueError("pyproject.toml does not contain a [tool.werr] section")
     if (
-        "tasks" not in config["tool"]["werr"]
-        or task not in config["tool"]["werr"]["tasks"]
+        "task" not in config["tool"]["werr"]
+        or task not in config["tool"]["werr"]["task"]
     ):
-        raise ValueError(f"[tool.werr] does not contain a `tasks.{task}` list")
+        raise ValueError(f"[tool.werr] does not contain a `task.{task}` list")
 
     return config["project"]["name"], [
-        cmd.Command(task) for task in config["tool"]["werr"]["tasks"][task]
+        cmd.Command(task) for task in config["tool"]["werr"]["task"][task]
     ]

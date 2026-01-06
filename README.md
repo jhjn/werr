@@ -14,14 +14,14 @@ dependencies = [
 
 [tool.werr]
 # 'check' is the default task if `werr` is run with no arguments.
-tasks.check = [
+task.check = [
     "black --check {project}",
     "isort --check {project}",
     "ruff check {project}",
     "mypy {project}",
     "pytest",
 ]
-tasks.fix = [
+task.fix = [
     "black {project}",
     "isort {project}",
     "ruff fix {project}",
@@ -51,12 +51,12 @@ werr --xml   # print Junit XML for CI
 
 ## Custom Tasks
 
-Define a custom task with `tasks.<name> = [ ... ]`
+Define a custom task with `task.<name> = [ ... ]`
 
 ```toml
 [tool.werr]
 # ...
-tasks.docs = [
+task.docs = [
     "sphinx-build -b html {project}",
 ]
 ```

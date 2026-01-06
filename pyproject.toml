@@ -21,13 +21,13 @@ dev = [
 package = true
 
 [tool.werr]
-tasks.check = [
+task.check = [
     "black --check {project}",
     "isort --check {project}",
     "ruff check {project}",
     "ty check {project}",
 ]
-tasks.fix = [
+task.fix = [
     "black {project}",
     "isort {project}",
     "ruff check --fix {project}",

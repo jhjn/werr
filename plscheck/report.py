@@ -49,6 +49,12 @@ class Reporter(ABC):
 
     @staticmethod
     @abstractmethod
+    def emit_info(msg: str) -> None:
+        """Print a message for an interactive reader."""
+        pass
+
+    @staticmethod
+    @abstractmethod
     def emit_start(task: cmd.Task) -> None:
         """What is printed before a task begins."""
         pass
@@ -68,6 +74,11 @@ class Reporter(ABC):
 
 class CliReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
+
+    @staticmethod
+    def emit_info(msg: str) -> None:
+        """Print to console."""
+        print(msg)
 
     @staticmethod
     def emit_start(task: cmd.Task) -> None:
@@ -114,6 +125,10 @@ class JsonReporter(Reporter):
     """A reporter for reporting the results of a task in lines of JSON."""
 
     @staticmethod
+    def emit_info(msg: str) -> None:
+        """Print nothing."""
+
+    @staticmethod
     def emit_start(task: cmd.Task) -> None:
         """Print nothing."""
 
@@ -139,6 +154,10 @@ class JsonReporter(Reporter):
 
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
+
+    @staticmethod
+    def emit_info(msg: str) -> None:
+        """Print nothing."""
 
     @staticmethod
     def emit_start(task: cmd.Task) -> None:

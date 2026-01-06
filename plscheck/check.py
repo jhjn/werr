@@ -13,7 +13,8 @@ def default(
 
     Emit results as we go.
     """
-    tasks = config.load_tasks(projectdir / "pyproject.toml")
+    name, tasks = config.load_project(projectdir / "pyproject.toml")
+    reporter.emit_info(f"Project: {name}")
 
     results = []
     for task in tasks:

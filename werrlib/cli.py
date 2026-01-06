@@ -1,18 +1,37 @@
 import argparse
 import logging
 import sys
+import _colorize
 from pathlib import Path
 
 from . import report, task
 
 log = logging.getLogger("cli")
 
+_colorize.set_theme(
+    _colorize.Theme(
+        argparse=_colorize.Argparse(
+            usage=_colorize.ANSIColors.BOLD_GREEN,
+            prog=_colorize.ANSIColors.BOLD_CYAN,
+            heading=_colorize.ANSIColors.BOLD_GREEN,
+            summary_long_option=_colorize.ANSIColors.CYAN,
+            summary_short_option=_colorize.ANSIColors.CYAN,
+            summary_label=_colorize.ANSIColors.CYAN,
+            summary_action=_colorize.ANSIColors.CYAN,
+            long_option=_colorize.ANSIColors.BOLD_CYAN,
+            short_option=_colorize.ANSIColors.BOLD_CYAN,
+            label=_colorize.ANSIColors.CYAN,
+            action=_colorize.ANSIColors.BOLD_CYAN,
+        )
+    )
+)
+
 
 def _get_parser() -> argparse.ArgumentParser:
     """Create a parser for the saturn CLI."""
     parser = argparse.ArgumentParser(
         prog="werr",
-        description="⚙️ the simple python project task runner",
+        description="A simple python project task runner",
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 

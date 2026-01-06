@@ -20,11 +20,11 @@ def load_project(pyproject: Path) -> tuple[str, list[cmd.Task]]:
         config = tomli.load(f)
 
     # validation
-    if "tool" not in config or "plscheck" not in config["tool"]:
-        raise ValueError("pyproject.toml does not contain a [tool.plscheck] section")
-    if "tasks" not in config["tool"]["plscheck"]:
-        raise ValueError("[tool.plscheck] does not contain a `tasks` list")
+    if "tool" not in config or "werr" not in config["tool"]:
+        raise ValueError("pyproject.toml does not contain a [tool.werr] section")
+    if "tasks" not in config["tool"]["werr"]:
+        raise ValueError("[tool.werr] does not contain a `tasks` list")
 
     return config["project"]["name"], [
-        cmd.Task(task) for task in config["tool"]["plscheck"]["tasks"]
+        cmd.Task(task) for task in config["tool"]["werr"]["tasks"]
     ]

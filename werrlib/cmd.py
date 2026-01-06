@@ -1,4 +1,4 @@
-"""Wrappers of `subprocess` for custom plscheck functionality."""
+"""Wrappers of `subprocess` for custom werr functionality."""
 
 from __future__ import annotations
 

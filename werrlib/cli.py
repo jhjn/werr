@@ -18,7 +18,7 @@ def _get_parser() -> argparse.ArgumentParser:
     RichHelpFormatter.styles["argparse.syntax"] = "magenta"
 
     parser = argparse.ArgumentParser(
-        prog="pls",
+        prog="werr",
         description="🪐 the simple python project task runner",
         formatter_class=RichHelpFormatter,
     )
@@ -62,7 +62,7 @@ def _get_parser() -> argparse.ArgumentParser:
 
 
 def run(argv: list[str]) -> None:
-    """Main entrypoint of the plscheck tool."""
+    """Main entrypoint of the werr tool."""
     args = _get_parser().parse_args(argv)
 
     logging.basicConfig(

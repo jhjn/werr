@@ -15,7 +15,7 @@ log = logging.getLogger("report")
 ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
 
-_SUITENAME = "plscheck"
+_SUITENAME = "werr"
 _TOTAL_HEAD_LEN = 25
 _HEAD_PFX = "      "
 

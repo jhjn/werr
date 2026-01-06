@@ -1,4 +1,4 @@
-"""Entrypoint for the pls CLI tool."""
+"""Entrypoint for the werr CLI tool."""
 
 __all__ = ("console_entry",)
 

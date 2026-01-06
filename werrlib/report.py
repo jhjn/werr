@@ -51,29 +51,27 @@ class Reporter(ABC):
     @abstractmethod
     def emit_info(msg: str) -> None:
         """Print a message for an interactive reader."""
-        pass
 
     @staticmethod
     @abstractmethod
     def emit_start(cmd: cmd.Command) -> None:
         """What is printed before a command begins."""
-        pass
 
     @staticmethod
     @abstractmethod
     def emit_end(result: cmd.Result) -> None:
         """What is printed after a command completes."""
-        pass
 
     @staticmethod
     @abstractmethod
     def emit_summary(results: list[cmd.Result]) -> None:
         """What is printed after the task has completed."""
-        pass
 
 
 class CliReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
+
+    task_index = 0
 
     @staticmethod
     def emit_info(msg: str) -> None:
@@ -83,7 +81,9 @@ class CliReporter(Reporter):
     @staticmethod
     def emit_start(cmd: cmd.Command) -> None:
         """Emit the start of a command."""
-        print(f"   {cmd.name:<20} ", end="", flush=True)
+        prefix = f"[{CliReporter.task_index+1}]"
+        print(f"{prefix:<5} {cmd.name:<20} ", end="", flush=True)
+        CliReporter.task_index += 1
 
     @staticmethod
     def emit_end(result: cmd.Result) -> None:
@@ -108,7 +108,8 @@ class CliReporter(Reporter):
             colour = Colour.GREEN
 
         msg = (
-            f"Ran {len(results)} check{_plural(len(results))} in {duration:>2.2f} secs, "
+            f"Ran {len(results)} check{_plural(len(results))} in "
+            f"{duration:>2.2f} secs, "
             f"{len(successes)} Passed, {len(failures)} Failed"
         )
         print(colourise(colour, msg))

@@ -32,3 +32,23 @@ task.fix = [
     "isort {project}",
     "ruff check --fix {project}",
 ]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",  # Trailing comma missing
+    "D203",    # one-blank-line-before-class
+    "D205",    # 1 blank line required between summary line and description
+    "D213",    # Multi line summary on the second line
+    "D401",    # First line of docstring should be in imperative mood
+    "EM101",   # Exception must not use a string literal, assign to variable first
+    "EM102",   # Exception must not use an f-string literal, assign to variable first
+    "FIX002",  # Allow TODO comments for future enhancements
+    "S101",    # Use of `assert` detected
+    "S602",    # `subprocess` call with `shell=True` identified, security issue
+    "SIM108",  # Use ternary operator
+    "T201",    # `print` found
+    "TD002",   # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
+    "TD003",   # Missing issue link for this TODO
+    "TRY003",  # Avoid specifying long messages outside the exception class
+]

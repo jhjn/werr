@@ -1,6 +1,9 @@
 """Orchestration of task execution."""
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from . import config, report
 

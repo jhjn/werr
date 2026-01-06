@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import textwrap
-from _colorize import ANSIColors as C
+from _colorize import ANSIColors as C  # ty: ignore[unresolved-import]
 from abc import ABC, abstractmethod
 
 from . import cmd, xml

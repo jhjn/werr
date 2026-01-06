@@ -68,6 +68,6 @@ Running `werr docs` will build the documentation.
 A suggested workflow for creating a new project is:
 
 1. `uv init`
-2. `uv add --dev black ruff ty pytest werr`
+2. `uv add --dev black ruff ty pytest`
 3. add tasks to `[tool.werr]`
-4. `uv run werr` or in venv just `werr`
+4. `uvx werr` or add to `dev` group and in venv just `werr`

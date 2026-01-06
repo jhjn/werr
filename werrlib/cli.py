@@ -1,4 +1,6 @@
-import _colorize
+"""The command line interface for the werr tool."""
+
+import _colorize  # ty: ignore[unresolved-import]
 import argparse
 import logging
 import sys

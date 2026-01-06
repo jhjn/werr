@@ -1,7 +1,10 @@
 """Loading of python project config for checking."""
 
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 try:
     import tomllib as tomli
@@ -15,7 +18,7 @@ log = logging.getLogger("config")
 
 def load_project(pyproject: Path, task: str) -> tuple[str, list[cmd.Command]]:
     """Load the commands from the pyproject.toml file."""
-    with open(pyproject, "rb") as f:
+    with pyproject.open("rb") as f:
         config = tomli.load(f)
 
     # validation of [tool.werr] section

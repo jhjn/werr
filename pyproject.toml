@@ -5,9 +5,7 @@ description = "A python project task runner"
 readme = "README.md"
 requires-python = ">=3.13"
 scripts = { "werr" = "werrlib.main:console_entry" }
-dependencies = [
-    "rich-argparse>=1.7.2",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [

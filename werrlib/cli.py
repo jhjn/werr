@@ -3,8 +3,6 @@ import logging
 import sys
 from pathlib import Path
 
-from rich_argparse import RichHelpFormatter  # type: ignore[import]
-
 from . import report, task
 
 log = logging.getLogger("cli")
@@ -12,15 +10,9 @@ log = logging.getLogger("cli")
 
 def _get_parser() -> argparse.ArgumentParser:
     """Create a parser for the saturn CLI."""
-    RichHelpFormatter.styles["argparse.args"] = "cyan"
-    RichHelpFormatter.styles["argparse.prog"] = "bold cyan"
-    RichHelpFormatter.styles["argparse.groups"] = "bold green"
-    RichHelpFormatter.styles["argparse.syntax"] = "magenta"
-
     parser = argparse.ArgumentParser(
         prog="werr",
-        description="🪐 the simple python project task runner",
-        formatter_class=RichHelpFormatter,
+        description="⚙️ the simple python project task runner",
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 

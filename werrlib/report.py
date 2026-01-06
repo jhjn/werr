@@ -1,4 +1,4 @@
-"""Manage the recording and reporting of tool requests."""
+"""Manage the recording and reporting of tasks."""
 
 from __future__ import annotations
 
@@ -55,20 +55,20 @@ class Reporter(ABC):
 
     @staticmethod
     @abstractmethod
-    def emit_start(task: cmd.Command) -> None:
-        """What is printed before a task begins."""
+    def emit_start(cmd: cmd.Command) -> None:
+        """What is printed before a command begins."""
         pass
 
     @staticmethod
     @abstractmethod
     def emit_end(result: cmd.Result) -> None:
-        """What is printed after a task completes."""
+        """What is printed after a command completes."""
         pass
 
     @staticmethod
     @abstractmethod
     def emit_summary(results: list[cmd.Result]) -> None:
-        """What is printed after all tasks have completed."""
+        """What is printed after the task has completed."""
         pass
 
 
@@ -81,13 +81,13 @@ class CliReporter(Reporter):
         print(msg)
 
     @staticmethod
-    def emit_start(task: cmd.Command) -> None:
-        """Emit the start of a task."""
-        print(f"   {task.name:<20} ", end="", flush=True)
+    def emit_start(cmd: cmd.Command) -> None:
+        """Emit the start of a command."""
+        print(f"   {cmd.name:<20} ", end="", flush=True)
 
     @staticmethod
     def emit_end(result: cmd.Result) -> None:
-        """Emit the end of a task."""
+        """Emit the end of a command."""
         if result.success:
             status = colourise(Colour.GREEN, "PASSED")
         else:
@@ -134,7 +134,7 @@ class JsonReporter(Reporter):
 
     @staticmethod
     def emit_end(result: cmd.Result) -> None:
-        """Emit the end of a task."""
+        """Emit the end of a command."""
         print(
             json.dumps(
                 {

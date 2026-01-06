@@ -15,15 +15,15 @@ package = true
 
 [tool.werr]
 tasks.check = [
-    "mypy .",
-    "black --check .",
-    "isort --check .",
-    "ruff check .",
+    "mypy {project}",
+    "black --check {project}",
+    "isort --check {project}",
+    "ruff check {project}",
 ]
 tasks.fix = [
-    "black .",
-    "isort .",
-    "ruff check --fix .",
+    "black {project}",
+    "isort {project}",
+    "ruff check --fix {project}",
 ]
 
 [dependency-groups]

@@ -15,16 +15,16 @@ dependencies = [
 [tool.werr]
 # 'check' is the default task if `werr` is run with no arguments.
 tasks.check = [
-    "black --check .",
-    "isort --check .",
-    "ruff check .",
-    "mypy .",
+    "black --check {project}",
+    "isort --check {project}",
+    "ruff check {project}",
+    "mypy {project}",
     "pytest",
 ]
 tasks.fix = [
-    "black .",
-    "isort .",
-    "ruff fix .",
+    "black {project}",
+    "isort {project}",
+    "ruff fix {project}",
 ]
 ```
 
@@ -33,7 +33,13 @@ The tool returns a non-zero exit code if any command fails.
 
 Running `werr fix` executes each `fix` command in sequence.
 
-All commands run using `uv` in isolated mode.
+NOTE: All commands are run using `uv`.
+
+## Command Variables
+
+The following `{...}` variables are provided by `werr` to be used in task commands:
+
+- `{project}` - the absolute path to the directory containing the `pyproject.toml` file
 
 ## Structured Output
 
@@ -51,7 +57,7 @@ Define a custom task with `tasks.<name> = [ ... ]`
 [tool.werr]
 # ...
 tasks.docs = [
-    "sphinx-build -b html .",
+    "sphinx-build -b html {project}",
 ]
 ```
 

@@ -37,9 +37,13 @@ class Command:
         """The name of the task."""
         return self.command.split(" ")[0]
 
+    def resolved_command(self, projectdir: Path) -> str:
+        """Return the command with the {...} variables substituted."""
+        return self.command.replace("{project}", str(projectdir.resolve()))
+
     def run(self, projectdir: Path) -> Result:
         """Run the task using `uv` in isolated mode."""
-        command = f"uv run --isolated --project '{projectdir}' {self.command}"
+        command = f"uv run --project '{projectdir}' {self.resolved_command(projectdir)}"
         log.debug("Running command: %s", command)
         start = time.monotonic()
         process = subprocess.run(

@@ -14,7 +14,7 @@ log = logging.getLogger("config")
 
 
 def load_project(pyproject: Path, task: str) -> tuple[str, list[cmd.Command]]:
-    """Load the tasks from the pyproject.toml file."""
+    """Load the commands from the pyproject.toml file."""
     with open(pyproject, "rb") as f:
         config = tomli.load(f)
 

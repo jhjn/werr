@@ -17,13 +17,13 @@ def run(
 
     Emit results as we go.
     """
-    name, tasks = config.load_project(projectdir / "pyproject.toml", task)
+    name, cmds = config.load_project(projectdir / "pyproject.toml", task)
     reporter.emit_info(f"Project: {name} ({task})")
 
     results = []
-    for task in tasks:
-        reporter.emit_start(task)
-        result = task.run(projectdir)
+    for cmd in cmds:
+        reporter.emit_start(cmd)
+        result = cmd.run(projectdir)
         results.append(result)
         reporter.emit_end(result)
 

@@ -3,7 +3,7 @@ import logging
 import sys
 from pathlib import Path
 
-from rich_argparse import RichHelpFormatter
+from rich_argparse import RichHelpFormatter  # type: ignore[import]
 
 from . import report, task
 

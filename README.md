@@ -33,7 +33,7 @@ The tool returns a non-zero exit code if any command fails.
 
 Running `werr fix` executes each `fix` command in sequence.
 
-NOTE: All commands are run using `uv`.
+NOTE: All commands are run using `uv` (the only dependency of this project).
 
 ## Command Variables
 

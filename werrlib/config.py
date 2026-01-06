@@ -10,21 +10,23 @@ except ImportError:
 
 from . import cmd
 
-
 log = logging.getLogger("config")
 
 
-def load_project(pyproject: Path) -> tuple[str, list[cmd.Task]]:
+def load_project(pyproject: Path, task: str) -> tuple[str, list[cmd.Command]]:
     """Load the tasks from the pyproject.toml file."""
     with open(pyproject, "rb") as f:
         config = tomli.load(f)
 
-    # validation
+    # validation of [tool.werr] section
     if "tool" not in config or "werr" not in config["tool"]:
         raise ValueError("pyproject.toml does not contain a [tool.werr] section")
-    if "tasks" not in config["tool"]["werr"]:
-        raise ValueError("[tool.werr] does not contain a `tasks` list")
+    if (
+        "tasks" not in config["tool"]["werr"]
+        or task not in config["tool"]["werr"]["tasks"]
+    ):
+        raise ValueError(f"[tool.werr] does not contain a `tasks.{task}` list")
 
     return config["project"]["name"], [
-        cmd.Task(task) for task in config["tool"]["werr"]["tasks"]
+        cmd.Command(task) for task in config["tool"]["werr"]["tasks"][task]
     ]

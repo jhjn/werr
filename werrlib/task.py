@@ -4,17 +4,21 @@ from pathlib import Path
 
 from . import config, report
 
+DEFAULT = "check"
 
-def default(
-    projectdir: Path, reporter: type[report.Reporter] = report.CliReporter
+
+def run(
+    projectdir: Path,
+    task: str = DEFAULT,
+    reporter: type[report.Reporter] = report.CliReporter,
 ) -> bool:
     """
-    Run the default check tasks and return True if successful.
+    Run the specified task and return True if all are successful.
 
     Emit results as we go.
     """
-    name, tasks = config.load_project(projectdir / "pyproject.toml")
-    reporter.emit_info(f"Project: {name}")
+    name, tasks = config.load_project(projectdir / "pyproject.toml", task)
+    reporter.emit_info(f"Project: {name} ({task})")
 
     results = []
     for task in tasks:

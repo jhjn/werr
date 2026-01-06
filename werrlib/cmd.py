@@ -15,7 +15,7 @@ log = logging.getLogger("cmd")
 class Result:
     """Information about a *completed* process."""
 
-    task: Task
+    task: Command
     returncode: int
     duration: float
     output: str
@@ -27,8 +27,8 @@ class Result:
 
 
 @dataclass(frozen=True, slots=True)
-class Task:
-    """A task to be run."""
+class Command:
+    """A command to be run as part of a task."""
 
     command: str
 

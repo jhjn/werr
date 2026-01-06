@@ -14,11 +14,16 @@ dependencies = [
 package = true
 
 [tool.werr]
-tasks = [
+tasks.check = [
     "mypy .",
     "black --check .",
     "isort --check .",
     "ruff check .",
+]
+tasks.fix = [
+    "black .",
+    "isort .",
+    "ruff check --fix .",
 ]
 
 [dependency-groups]

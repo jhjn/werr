@@ -11,7 +11,8 @@ dependencies = [
 ]
 
 [tool.werr]
-tasks = [
+# 'check' is the default task
+tasks.check = [
     "mypy .",
     "black --check .",
     "isort --check .",
@@ -19,36 +20,37 @@ tasks = [
 ]
 ```
 
-Run `werr` to run each task in sequence, printing which tasks failed and how.
+Run `werr` to run each of the `check` commands in sequence, printing which failed and how.
+The tool returns a non-zero exit code if any command fails.
 
-All tasks run using `uv` in isolated mode.
+All commands run using `uv` in isolated mode.
 
 ## Structured Output
 
 ```bash
 werr         # interactive human readable output (default)
-werr --json  # emit lines of JSON representing the result of each task
+werr --json  # emit lines of JSON representing the result of each command
 werr --xml   # print Junit XML for CI
 ```
 
-## Custom Modes
+## Custom Tasks
 
-Define a custom mode like `custom.<name> = [ ... ]`
+Define a custom task like `tasks.<name> = [ ... ]`
 
 ```toml
 [tool.werr]
-tasks = [
+tasks.check = [
     "mypy .",
     "black --check .",
     "isort --check .",
     "ruff check .",
 ]
-custom.fix = [
+tasks.fix = [
     "black .",
     "isort .",
     "ruff fix .",
 ]
-custom.docs = [
+tasks.docs = [
     "sphinx-build -b html .",
 ]
 ```

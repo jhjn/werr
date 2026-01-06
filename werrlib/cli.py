@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rich_argparse import RichHelpFormatter
 
-from . import check, report
+from . import report, task
 
 log = logging.getLogger("cli")
 
@@ -30,6 +30,13 @@ def _get_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path.cwd(),
         help="Python project directory (defaults to cwd)",
+    )
+
+    parser.add_argument(
+        "task",
+        nargs="?",
+        default=task.DEFAULT,
+        help=f"Task to run (defined in pyproject.toml, defaults to '{task.DEFAULT}')",
     )
 
     # Output format selection - all options write to 'reporter' dest
@@ -71,6 +78,6 @@ def run(argv: list[str]) -> None:
     )
     log.debug("Called with arguments: %s", argv)
 
-    success = check.default(args.project, args.reporter)
+    success = task.run(args.project, args.task, args.reporter)
     if not success:
         sys.exit(1)

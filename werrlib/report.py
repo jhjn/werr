@@ -55,7 +55,7 @@ class Reporter(ABC):
 
     @staticmethod
     @abstractmethod
-    def emit_start(task: cmd.Task) -> None:
+    def emit_start(task: cmd.Command) -> None:
         """What is printed before a task begins."""
         pass
 
@@ -81,9 +81,9 @@ class CliReporter(Reporter):
         print(msg)
 
     @staticmethod
-    def emit_start(task: cmd.Task) -> None:
+    def emit_start(task: cmd.Command) -> None:
         """Emit the start of a task."""
-        print(f"  {task.name:<20} ", end="", flush=True)
+        print(f"   {task.name:<20} ", end="", flush=True)
 
     @staticmethod
     def emit_end(result: cmd.Result) -> None:
@@ -129,7 +129,7 @@ class JsonReporter(Reporter):
         """Print nothing."""
 
     @staticmethod
-    def emit_start(task: cmd.Task) -> None:
+    def emit_start(task: cmd.Command) -> None:
         """Print nothing."""
 
     @staticmethod
@@ -160,7 +160,7 @@ class XmlReporter(Reporter):
         """Print nothing."""
 
     @staticmethod
-    def emit_start(task: cmd.Task) -> None:
+    def emit_start(task: cmd.Command) -> None:
         """Print nothing."""
 
     @staticmethod

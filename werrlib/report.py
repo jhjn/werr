@@ -129,7 +129,7 @@ class JsonReporter(Reporter):
         """Print nothing."""
 
     @staticmethod
-    def emit_start(task: cmd.Command) -> None:
+    def emit_start(cmd: cmd.Command) -> None:
         """Print nothing."""
 
     @staticmethod
@@ -160,7 +160,7 @@ class XmlReporter(Reporter):
         """Print nothing."""
 
     @staticmethod
-    def emit_start(task: cmd.Command) -> None:
+    def emit_start(cmd: cmd.Command) -> None:
         """Print nothing."""
 
     @staticmethod

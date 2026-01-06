@@ -5,9 +5,16 @@ description = "A python project task runner"
 readme = "README.md"
 requires-python = ">=3.13"
 scripts = { "werr" = "werrlib.main:console_entry" }
-
 dependencies = [
     "rich-argparse>=1.7.2",
+]
+
+[dependency-groups]
+dev = [
+    "isort>=7.0.0",
+    "pytest>=9.0.2",
+    "ruff>=0.14.10",
+    "ty>=0.0.9",
 ]
 
 [tool.uv]
@@ -15,18 +22,13 @@ package = true
 
 [tool.werr]
 tasks.check = [
-    "mypy {project}",
     "black --check {project}",
     "isort --check {project}",
     "ruff check {project}",
+    "ty check {project}",
 ]
 tasks.fix = [
     "black {project}",
     "isort {project}",
     "ruff check --fix {project}",
-]
-
-[dependency-groups]
-dev = [
-    "ruff>=0.14.10",
 ]

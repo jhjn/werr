@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import enum
 import json
 import logging
 import re
 import textwrap
+from _colorize import ANSIColors as C
 from abc import ABC, abstractmethod
 
 from . import cmd, xml
@@ -18,30 +18,6 @@ ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 _SUITENAME = "werr"
 _TOTAL_HEAD_LEN = 25
 _HEAD_PFX = "      "
-
-
-class Colour(enum.Enum):
-    """ASCII escape colour codes."""
-
-    # @@@ replace with rich
-
-    NONE = 0
-    BLACK = 30
-    RED = 31
-    GREEN = 32
-    YELLOW = 33
-    BLUE = 34
-    MAGENTA = 35
-    CYAN = 36
-    WHITE = 37
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-
-def colourise(colour: Colour, content: str) -> str:
-    """Return an escaped string that will print as a given colour."""
-    return f"\033[{colour}m{content}\033[0m"
 
 
 class Reporter(ABC):
@@ -89,9 +65,9 @@ class CliReporter(Reporter):
     def emit_end(result: cmd.Result) -> None:
         """Emit the end of a command."""
         if result.success:
-            status = colourise(Colour.GREEN, "PASSED")
+            status = f"{C.GREEN}PASSED{C.RESET}"
         else:
-            status = colourise(Colour.RED, "FAILED")
+            status = f"{C.RED}FAILED{C.RESET}"
 
         print(f"({result.duration:>2.2f} secs) {status:>18}", flush=True)
 
@@ -102,17 +78,12 @@ class CliReporter(Reporter):
         failures = [result for result in results if not result.success]
         duration = sum(result.duration for result in results)
 
-        if failures:
-            colour = Colour.RED
-        else:
-            colour = Colour.GREEN
-
         msg = (
             f"Ran {len(results)} check{_plural(len(results))} in "
             f"{duration:>2.2f} secs, "
             f"{len(successes)} Passed, {len(failures)} Failed"
         )
-        print(colourise(colour, msg))
+        print(f"{C.RED if failures else C.GREEN}{msg}{C.RESET}")
 
         if failures:
             print("\nFailures:\n---------")

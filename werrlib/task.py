@@ -12,8 +12,7 @@ def run(
     task: str = DEFAULT,
     reporter: type[report.Reporter] = report.CliReporter,
 ) -> bool:
-    """
-    Run the specified task and return True if all are successful.
+    """Run the specified task and return True if all are successful.
 
     Emit results as we go.
     """

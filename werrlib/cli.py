@@ -1,7 +1,7 @@
+import _colorize
 import argparse
 import logging
 import sys
-import _colorize
 from pathlib import Path
 
 from . import report, task

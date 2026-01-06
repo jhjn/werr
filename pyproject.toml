@@ -3,14 +3,13 @@ name = "werr"
 version = "0.1.0"
 description = "A python project task runner"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 scripts = { "werr" = "werrlib.main:console_entry" }
 dependencies = []
 
 [dependency-groups]
 dev = [
     "black>=25.12.0",
-    "isort>=7.0.0",
     "pytest>=9.0.2",
     "ruff>=0.14.10",
     "ty>=0.0.9",
@@ -21,15 +20,13 @@ package = true
 
 [tool.werr]
 task.check = [
-    "black --check {project}",
-    "isort --check {project}",
-    "ruff check {project}",
-    "ty check {project}",
+    "black --check {project}/werrlib",
+    "ruff check {project}/werrlib",
+    "ty check {project}/werrlib",
 ]
 task.fix = [
-    "black {project}",
-    "isort {project}",
-    "ruff check --fix {project}",
+    "black {project}/werrlib",
+    "ruff check --fix {project}/werrlib",
 ]
 
 [tool.ruff.lint]

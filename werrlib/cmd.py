@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import time
 from dataclasses import dataclass
@@ -53,6 +54,8 @@ class Command:
             text=True,
             stderr=subprocess.STDOUT,
             stdout=subprocess.PIPE,
+            # env is a copy but without the `VIRTUAL_ENV` variable.
+            env=os.environ.copy() | {"VIRTUAL_ENV": ""},
         )
         duration = time.monotonic() - start
         return Result(self, process.returncode, duration, process.stdout)

@@ -9,6 +9,20 @@ description = "A python project task runner"
 readme = "README.md"
 requires-python = ">=3.14"
 scripts = { "werr" = "werrlib.main:console_entry" }
+urls = { "Homepage" = "https://github.com/jhjn/werr", "Repository" = "https://github.com/jhjn/werr" }
+keywords = ["tasks", "task-runner", "makefile", "checks", "uv", "automation", "werr"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing"
+]
 dependencies = []
 
 [dependency-groups]

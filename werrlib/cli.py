@@ -29,6 +29,31 @@ _colorize.set_theme(
 )
 
 
+class LogFormatter(logging.Formatter):
+    """Custom stdlib log formatter for the werr tool."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format a log record with a colorized level name."""
+        match record.levelno:
+            case logging.DEBUG:
+                name = _colorize.ANSIColors.MAGENTA + "debug"
+            case logging.INFO:
+                name = _colorize.ANSIColors.GREEN + "info"
+            case logging.WARNING:
+                name = _colorize.ANSIColors.YELLOW + "warning"
+            case logging.ERROR:
+                name = _colorize.ANSIColors.RED + "error"
+            case logging.CRITICAL:
+                name = _colorize.ANSIColors.BOLD_RED + "critical"
+            case _:
+                name = _colorize.ANSIColors.RESET + "unknown"
+
+        name += _colorize.ANSIColors.RESET
+
+        self._style._fmt = f"{name}: %(message)s"  # noqa: SLF001
+        return super().format(record)
+
+
 def _get_parser() -> argparse.ArgumentParser:
     """Create a parser for the saturn CLI."""
     parser = argparse.ArgumentParser(
@@ -85,10 +110,10 @@ def run(argv: list[str]) -> None:
     """Main entrypoint of the werr tool."""
     args = _get_parser().parse_args(argv)
 
-    logging.basicConfig(
-        format="[%(levelname)s] %(message)s",
-        level=logging.DEBUG if args.verbose else logging.INFO,
-    )
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    root_logger.addHandler(logging.StreamHandler(sys.stdout))
+    root_logger.handlers[0].setFormatter(LogFormatter())
     log.debug("Called with arguments: %s", argv)
 
     success = task.run(args.project, args.task, args.reporter)

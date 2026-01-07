@@ -1,6 +1,22 @@
+<img align="left" width="80" height="80" src="https://openmoji.org/data/color/svg/2699.svg" alt="gear">
+
 # werr
 
-A simple, opinionated, python project task runner.
+<div align="center">
+
+[![werr](https://img.shields.io/badge/src-werr-purple?logo=github)](https://github.com/jhjn/werr)
+[![version](https://img.shields.io/pypi/v/werr.svg)](https://pypi.python.org/pypi/werr)
+[![license](https://img.shields.io/pypi/l/werr.svg)](https://pypi.python.org/pypi/werr)
+[![python](https://img.shields.io/pypi/pyversions/werr.svg)](https://pypi.python.org/pypi/werr)
+
+<!--
+[![testing](https://github.com/jhjn/werr/actions/workflows/ci.yml/badge.svg)](https://github.com/jhjn/werr/actions)
+[![downloads](https://img.shields.io/pypi/dm/werr.svg)](https://pypistats.org/packages/werr)
+-->
+
+</div>
+
+**A simple, opinionated, python project task runner.**
 
 A task is a configured sequence of commands to run.
 

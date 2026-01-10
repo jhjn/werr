@@ -18,7 +18,7 @@
 
 **A simple, opinionated, python project task runner.**
 
-![werr passing](https://github.com/user-attachments/assets/b9310ffd-e150-49c7-863e-9d9f6009ec73)
+![werr passing](https://github.com/user-attachments/assets/b7b46341-6751-49d2-b00f-05885cce2973)
 
 A task is a configured sequence of commands to run.
 

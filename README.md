@@ -18,7 +18,7 @@
 
 **A simple, opinionated, python project task runner.**
 
-![werr passing](https://github.com/user-attachments/assets/da2cb292-040f-46f1-8a22-bfa52267d768)
+![werr passing](https://github.com/user-attachments/assets/b9310ffd-e150-49c7-863e-9d9f6009ec73)
 
 A task is a configured sequence of commands to run.
 
@@ -69,7 +69,37 @@ werr --xml   # print Junit XML for CI
 
 The `--json` output results in a line of JSON being emitted as soon as a command finishes:
 
-![werr --json](https://github.com/user-attachments/assets/6a99d6c1-7c65-4508-b35f-093729d8e03d)
+```bash
+> werr --json | jq
+{
+  "task": "black",
+  "command": "black --check {project}/werrlib",
+  "duration": 0.10738483420573175,
+  "output": "All done! ✨ 🍰 ✨\n8 files would be left unchanged.\n",
+  "success": true
+}
+{
+  "task": "ruff",
+  "command": "ruff check {project}/werrlib",
+  "duration": 0.016670041950419545,
+  "output": "All checks passed!\n",
+  "success": true
+}
+{
+  "task": "ty",
+  "command": "ty check {project}/werrlib",
+  "duration": 0.03577654203400016,
+  "output": "All checks passed!\n",
+  "success": true
+}
+{
+  "task": "pytest",
+  "command": "pytest --config-file {project}/pyproject.toml",
+  "duration": 0.13576683308929205,
+  "output": "============================= test session starts ==============================\nplatform darwin -- Python 3.14.0rc1, pytest-9.0.2, pluggy-1.6.0\nrootdir: /Users/joe/repos/werr\nconfigfile: pyproject.toml\ntestpaths: tests\ncollected 7 items\n\ntests/test_config.py .......                                             [100%]\n\n============================== 7 passed in 0.01s ===============================\n",
+  "success": true
+}
+```
 
 ## Custom Tasks
 
@@ -93,3 +123,7 @@ A suggested workflow for creating a new project is:
 2. `uv add --dev black ruff ty pytest`
 3. add tasks to `[tool.werr]`
 4. `uvx werr` or add to `dev` group and in venv just `werr`
+
+## Failing Example
+
+![werr failing](https://github.com/user-attachments/assets/84359e13-4c1e-4678-9715-0494abf3e8c3)

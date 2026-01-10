@@ -1,6 +1,6 @@
 <img align="left" width="80" height="80" src="https://openmoji.org/data/color/svg/2699.svg" alt="gear">
 
-# werr
+# werr <!-- replace with svg -->
 
 <div align="center">
 
@@ -17,6 +17,8 @@
 </div>
 
 **A simple, opinionated, python project task runner.**
+
+<!--add image of werr in action here (with pytest too) -->
 
 A task is a configured sequence of commands to run.
 

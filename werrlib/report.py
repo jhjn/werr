@@ -109,8 +109,11 @@ class ParallelCliReporter(CliReporter):
     def _cursor_up(self, lines: int) -> None:
         print(f"\033[{lines}A", end="", flush=True)
 
-    def _cursor_down(self, lines: int) -> None:
-        print(f"\033[{lines}B", end="", flush=True)
+    def _cursor_save(self) -> None:
+        print("\0337", end="", flush=True)
+
+    def _cursor_restore(self) -> None:
+        print("\0338", end="", flush=True)
 
     def emit_start(self, cmd: cmd.Command) -> None:
         """Print the command with running status."""
@@ -123,12 +126,10 @@ class ParallelCliReporter(CliReporter):
     def emit_end(self, result: cmd.Result) -> None:
         """Move cursor back and update the command's status."""
         up_amount = len(self._commands) - self._commands.index(result.cmd.command)
+        self._cursor_save()
         self._cursor_up(up_amount)
-
         super().emit_end(result)
-
-        self._cursor_down(up_amount)
-        print("\r", end="", flush=True)
+        self._cursor_restore()
 
 
 class JsonReporter(Reporter):

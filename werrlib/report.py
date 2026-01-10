@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import textwrap
+import time
 from _colorize import ANSIColors as C  # ty: ignore[unresolved-import]
 from abc import ABC, abstractmethod
 
@@ -23,64 +24,67 @@ _HEAD_PFX = "      "
 class Reporter(ABC):
     """A reporter for reporting the results of a task."""
 
-    @staticmethod
     @abstractmethod
-    def emit_info(msg: str) -> None:
-        """Print a message for an interactive reader."""
+    def emit_info(self, msg: str) -> None:
+        """Print a message (for an interactive reader)."""
 
-    @staticmethod
     @abstractmethod
-    def emit_start(cmd: cmd.Command) -> None:
+    def emit_start(self, cmd: cmd.Command) -> None:
         """What is printed before a command begins."""
 
-    @staticmethod
     @abstractmethod
-    def emit_end(result: cmd.Result) -> None:
+    def emit_end(self, result: cmd.Result) -> None:
         """What is printed after a command completes."""
 
-    @staticmethod
     @abstractmethod
-    def emit_summary(results: list[cmd.Result]) -> None:
+    def emit_summary(self, results: list[cmd.Result]) -> None:
         """What is printed after the task has completed."""
 
 
 class CliReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
 
-    task_index = 0
+    start_time: float | None = None
 
-    @staticmethod
-    def emit_info(msg: str) -> None:
+    icon_wait = f"{C.YELLOW}o{C.RESET}"
+    icon_pass = f"{C.GREEN}+{C.RESET}"
+    icon_fail = f"{C.RED}x{C.RESET}"
+
+    def _duration(self) -> float:
+        assert self.start_time, "must have start set before duration()"
+        return time.monotonic() - self.start_time
+
+    def _clear_line(self) -> None:
+        print("\r\033[K", end="", flush=True)
+
+    def emit_info(self, msg: str) -> None:
         """Print to console."""
         print(msg)
 
-    @staticmethod
-    def emit_start(cmd: cmd.Command) -> None:
+    def emit_start(self, cmd: cmd.Command) -> None:
         """Emit the start of a command."""
-        prefix = f"[{CliReporter.task_index+1}]"
-        print(f"{prefix:<5} {cmd.name:<20} ", end="", flush=True)
-        CliReporter.task_index += 1
+        if self.start_time is None:
+            self.start_time = time.monotonic()
 
-    @staticmethod
-    def emit_end(result: cmd.Result) -> None:
+        print(f"  {self.icon_wait} {cmd.name:<20} ", end="", flush=True)
+
+    def emit_end(self, result: cmd.Result) -> None:
         """Emit the end of a command."""
-        if result.success:
-            status = f"{C.GREEN}PASSED{C.RESET}"
-        else:
-            status = f"{C.RED}FAILED{C.RESET}"
+        self._clear_line()
+        print(
+            f"  {self.icon_pass if result.success else self.icon_fail} "
+            f"{result.cmd.name:<20} {C.CYAN}({result.duration:.2f}s){C.RESET}",
+            flush=True,
+        )
 
-        print(f"({result.duration:>2.2f} secs) {status:>18}", flush=True)
-
-    @staticmethod
-    def emit_summary(results: list[cmd.Result]) -> None:
+    def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print the summary line explaining what the net result was."""
         successes = [result for result in results if result.success]
         failures = [result for result in results if not result.success]
-        duration = sum(result.duration for result in results)
 
         msg = (
             f"Ran {len(results)} check{_plural(len(results))} in "
-            f"{duration:>2.2f} secs, "
+            f"{self._duration():>2.2f} secs, "
             f"{len(successes)} Passed, {len(failures)} Failed"
         )
         print(f"{C.RED if failures else C.GREEN}{msg}{C.RESET}")
@@ -88,30 +92,62 @@ class CliReporter(Reporter):
         if failures:
             print("\nFailures:\n---------")
             for result in failures:
-                CliReporter.emit_start(result.task)
+                self.emit_start(result.cmd)
                 print()
                 print(textwrap.indent(result.output, _HEAD_PFX))
+
+
+class ParallelCliReporter(CliReporter):
+    """An interactive reporter with live display updating in place."""
+
+    _commands: list[str]
+
+    def __init__(self) -> None:
+        """Initialise the parallel CLI reporter."""
+        self._commands = []
+
+    def _cursor_up(self, lines: int) -> None:
+        print(f"\033[{lines}A", end="", flush=True)
+
+    def _cursor_save(self) -> None:
+        print("\0337", end="", flush=True)
+
+    def _cursor_restore(self) -> None:
+        print("\0338", end="", flush=True)
+
+    def emit_start(self, cmd: cmd.Command) -> None:
+        """Print the command with running status."""
+        if self.start_time is None:
+            self.start_time = time.monotonic()
+
+        print(f"  {C.YELLOW}o{C.RESET} {cmd.name}", flush=True)
+        self._commands.append(cmd.command)
+
+    def emit_end(self, result: cmd.Result) -> None:
+        """Move cursor back and update the command's status."""
+        up_amount = len(self._commands) - self._commands.index(result.cmd.command)
+        self._cursor_save()
+        self._cursor_up(up_amount)
+        super().emit_end(result)
+        self._cursor_restore()
 
 
 class JsonReporter(Reporter):
     """A reporter for reporting the results of a task in lines of JSON."""
 
-    @staticmethod
-    def emit_info(msg: str) -> None:
+    def emit_info(self, msg: str) -> None:
         """Print nothing."""
 
-    @staticmethod
-    def emit_start(cmd: cmd.Command) -> None:
+    def emit_start(self, cmd: cmd.Command) -> None:
         """Print nothing."""
 
-    @staticmethod
-    def emit_end(result: cmd.Result) -> None:
+    def emit_end(self, result: cmd.Result) -> None:
         """Emit the end of a command."""
         print(
             json.dumps(
                 {
-                    "task": result.task.name,
-                    "command": result.task.command,
+                    "task": result.cmd.name,
+                    "command": result.cmd.command,
                     "duration": result.duration,
                     "output": ansi_escape.sub("", result.output),
                     "success": result.success,
@@ -119,28 +155,23 @@ class JsonReporter(Reporter):
             )
         )
 
-    @staticmethod
-    def emit_summary(results: list[cmd.Result]) -> None:
+    def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print nothing."""
 
 
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
 
-    @staticmethod
-    def emit_info(msg: str) -> None:
+    def emit_info(self, msg: str) -> None:
         """Print nothing."""
 
-    @staticmethod
-    def emit_start(cmd: cmd.Command) -> None:
+    def emit_start(self, cmd: cmd.Command) -> None:
         """Print nothing."""
 
-    @staticmethod
-    def emit_end(result: cmd.Result) -> None:
+    def emit_end(self, result: cmd.Result) -> None:
         """Print nothing."""
 
-    @staticmethod
-    def emit_summary(results: list[cmd.Result]) -> None:
+    def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print Junit XML summary."""
         print(_create_xml(results))
 
@@ -186,7 +217,7 @@ def _result_xml(result: cmd.Result) -> xml.Node:
     """Create a single Junit XML testcase."""
     node = xml.Node(
         "testcase",
-        name=result.task.name,
+        name=result.cmd.name,
         time=result.duration,
         classname=_SUITENAME,
     )

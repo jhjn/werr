@@ -63,6 +63,13 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     parser.add_argument(
+        "-x",
+        "--execute-parallel",
+        action="store_true",
+        help="Run task commands in parallel",
+    )
+
+    parser.add_argument(
         "-p",
         "--project",
         type=Path,
@@ -116,6 +123,14 @@ def run(argv: list[str]) -> None:
     root_logger.handlers[0].setFormatter(LogFormatter())
     log.debug("Called with arguments: %s", argv)
 
-    success = task.run(args.project, args.task, args.reporter)
+    if args.execute_parallel:
+        if args.reporter == report.CliReporter:
+            # Alternative interactive reporter to handle parallelism
+            args.reporter = report.ParallelCliReporter
+
+        success = task.run_parallel(args.project, args.task, args.reporter())
+    else:
+        success = task.run(args.project, args.task, args.reporter())
+
     if not success:
         sys.exit(1)

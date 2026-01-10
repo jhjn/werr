@@ -1,0 +1,11 @@
+[project]
+name = "sleepyhead"
+version = "0.1.0"
+
+[tool.werr]
+task.check = [
+    "sleep 2",
+    "sleep 0.5",
+    "sleep 1",
+]
+

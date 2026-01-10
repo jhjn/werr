@@ -128,9 +128,9 @@ def run(argv: list[str]) -> None:
             # Alternative interactive reporter to handle parallelism
             args.reporter = report.ParallelCliReporter
 
-        success = task.run_parallel(args.project, args.task, args.reporter)
+        success = task.run_parallel(args.project, args.task, args.reporter())
     else:
-        success = task.run(args.project, args.task, args.reporter)
+        success = task.run(args.project, args.task, args.reporter())
 
     if not success:
         sys.exit(1)

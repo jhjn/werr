@@ -16,12 +16,15 @@ DEFAULT = "check"
 def run(
     projectdir: Path,
     task: str = DEFAULT,
-    reporter: type[report.Reporter] = report.CliReporter,
+    reporter: report.Reporter | None = None,
 ) -> bool:
     """Run the specified task and return True if all are successful.
 
     Emit results as we go.
     """
+    if reporter is None:
+        reporter = report.CliReporter()
+
     name, cmds = config.load_project(projectdir / "pyproject.toml", task)
     reporter.emit_info(f"Project: {name} ({task})")
 
@@ -40,12 +43,15 @@ def run(
 def run_parallel(
     projectdir: Path,
     task: str = DEFAULT,
-    reporter: type[report.Reporter] = report.ParallelCliReporter,
+    reporter: report.Reporter | None = None,
 ) -> bool:
     """Run the specified task in parallel and return True if all are successful.
 
     Live display reports results as each process completes.
     """
+    if reporter is None:
+        reporter = report.ParallelCliReporter()
+
     name, cmds = config.load_project(projectdir / "pyproject.toml", task)
     reporter.emit_info(f"Project: {name} ({task})")
 

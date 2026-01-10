@@ -42,6 +42,7 @@ task.check = [
     "black --check {project}/werrlib",
     "ruff check {project}/werrlib",
     "ty check {project}/werrlib",
+    "pytest --config-file {project}/pyproject.toml",
 ]
 task.fix = [
     "black {project}/werrlib",
@@ -70,3 +71,6 @@ ignore = [
     "TD003",   # Missing issue link for this TODO
     "TRY003",  # Avoid specifying long messages outside the exception class
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -63,18 +63,18 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     parser.add_argument(
+        "-x",
+        "--execute-parallel",
+        action="store_true",
+        help="Run task commands in parallel",
+    )
+
+    parser.add_argument(
         "-p",
         "--project",
         type=Path,
         default=Path.cwd(),
         help="Python project directory (defaults to cwd)",
-    )
-
-    parser.add_argument(
-        "-x",
-        "--execute-parallel",
-        action="store_true",
-        help="Run task commands in parallel",
     )
 
     parser.add_argument(

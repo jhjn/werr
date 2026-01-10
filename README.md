@@ -18,7 +18,7 @@
 
 **A simple, opinionated, python project task runner.**
 
-<!--add image of werr in action here (with pytest too) -->
+![werr passing](https://github.com/user-attachments/assets/da2cb292-040f-46f1-8a22-bfa52267d768)
 
 A task is a configured sequence of commands to run.
 
@@ -66,6 +66,10 @@ werr         # interactive human readable output (default)
 werr --json  # emit lines of JSON representing the result of each command
 werr --xml   # print Junit XML for CI
 ```
+
+The `--json` output results in a line of JSON being emitted as soon as a command finishes:
+
+![werr --json](https://github.com/user-attachments/assets/6a99d6c1-7c65-4508-b35f-093729d8e03d)
 
 ## Custom Tasks
 

@@ -60,7 +60,9 @@ def _get_parser() -> argparse.ArgumentParser:
         prog="werr",
         description="A simple python project task runner",
     )
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
 
     parser.add_argument(
         "-x",

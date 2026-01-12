@@ -38,15 +38,16 @@ dev = [
 package = true
 
 [tool.werr]
+variable.packages = "{project}/werrlib/ {project}/tests/"
 task.check = [
-    "black --check {project}/werrlib",
-    "ruff check {project}/werrlib",
-    "ty check {project}/werrlib",
-    "pytest --config-file {project}/pyproject.toml",
+    "black --check {packages}",
+    "ruff check {packages}",
+    "ty check {packages}",
+    "pytest {project}",
 ]
 task.fix = [
-    "black {project}/werrlib",
-    "ruff check --fix {project}/werrlib",
+    "black {packages}",
+    "ruff check --fix {packages}",
 ]
 task.docs = [
     "mkdocs gh-deploy --force",

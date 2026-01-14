@@ -6,17 +6,36 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .cmd import Process
+    from .cmd import Command, Process
 
 from . import config, report
 
 DEFAULT = "check"
 
 
+def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
+    """Filter commands if a name filter is set."""
+    if name_filter is None:
+        return cmds
+
+    # first, attempt to match the exact name
+    cmds = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
+    if not cmds:
+        # if no matches, attempt to match as a prefix
+        cmds = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
+    if not cmds:
+        raise ValueError(
+            f"No commands match name: {name_filter}, available: "
+            + ", ".join(cmd.name for cmd in cmds)
+        )
+    return cmds
+
+
 def run(
     projectdir: Path,
     task: str = DEFAULT,
     reporter: report.Reporter | None = None,
+    name_filter: str | None = None,
 ) -> bool:
     """Run the specified task and return True if all are successful.
 
@@ -26,6 +45,7 @@ def run(
         reporter = report.CliReporter()
 
     name, cmds = config.load_project(projectdir / "pyproject.toml", task)
+    cmds = _filter_name(cmds, name_filter)
     reporter.emit_info(f"Project: {name} ({task})")
 
     results = []
@@ -44,6 +64,7 @@ def run_parallel(
     projectdir: Path,
     task: str = DEFAULT,
     reporter: report.Reporter | None = None,
+    name_filter: str | None = None,
 ) -> bool:
     """Run the specified task in parallel and return True if all are successful.
 
@@ -53,6 +74,7 @@ def run_parallel(
         reporter = report.ParallelCliReporter()
 
     name, cmds = config.load_project(projectdir / "pyproject.toml", task)
+    cmds = _filter_name(cmds, name_filter)
     reporter.emit_info(f"Project: {name} ({task})")
 
     # kick off all commands

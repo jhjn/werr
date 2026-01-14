@@ -80,6 +80,12 @@ def _get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "-n",
+        "--name",
+        help="Name of command to filter by (runs single tool)",
+    )
+
+    parser.add_argument(
         "task",
         nargs="?",
         default=task.DEFAULT,
@@ -130,9 +136,9 @@ def run(argv: list[str]) -> None:
             # Alternative interactive reporter to handle parallelism
             args.reporter = report.ParallelCliReporter
 
-        success = task.run_parallel(args.project, args.task, args.reporter())
+        success = task.run_parallel(args.project, args.task, args.reporter(), args.name)
     else:
-        success = task.run(args.project, args.task, args.reporter())
+        success = task.run(args.project, args.task, args.reporter(), args.name)
 
     if not success:
         sys.exit(1)

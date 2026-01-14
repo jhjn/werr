@@ -1,0 +1,4 @@
+/* Remove the header above the table of contents */
+.md-nav__title {
+    display: none;
+}

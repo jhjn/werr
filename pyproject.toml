@@ -39,19 +39,24 @@ package = true
 
 [tool.werr]
 variable.packages = "werrlib/ tests/"
+
 task.check = [
     "black --check {packages}",
     "ruff check {packages}",
     "ty check {packages}",
     "pytest {project}",
 ]
+default.check.parallel = true
+
 task.fix = [
     "black {packages}",
     "ruff check --fix {packages}",
 ]
+
 task.docs = [
     "mkdocs gh-deploy --force",
 ]
+default.docs.reporter = "live"
 
 [tool.ruff.lint]
 select = ["ALL"]

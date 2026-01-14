@@ -151,7 +151,7 @@ class JsonReporter(Reporter):
         print(
             json.dumps(
                 {
-                    "task": result.cmd.name,
+                    "name": result.cmd.name,
                     "command": result.cmd.command,
                     "duration": result.duration,
                     "output": ansi_escape.sub("", result.output),

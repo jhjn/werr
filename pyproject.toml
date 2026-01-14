@@ -58,6 +58,9 @@ task.docs = [
 ]
 default.docs.reporter = "live"
 
+task.demo = ["echo hi"]
+default.demo.reporter = "live"
+
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [

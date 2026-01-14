@@ -24,6 +24,9 @@ _HEAD_PFX = "      "
 class Reporter(ABC):
     """A reporter for reporting the results of a task."""
 
+    capture_output: bool = True
+    parallel_cmds: bool = False
+
     @abstractmethod
     def emit_info(self, msg: str) -> None:
         """Print a message (for an interactive reader)."""
@@ -100,6 +103,8 @@ class CliReporter(Reporter):
 class ParallelCliReporter(CliReporter):
     """An interactive reporter with live display updating in place."""
 
+    parallel_cmds: bool = True
+
     _commands: list[str]
 
     def __init__(self) -> None:
@@ -159,6 +164,12 @@ class JsonReporter(Reporter):
         """Print nothing."""
 
 
+class ParallelJsonReporter(JsonReporter):
+    """A reporter for reporting the results of a task in lines of JSON."""
+
+    parallel_cmds: bool = True
+
+
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
 
@@ -174,6 +185,63 @@ class XmlReporter(Reporter):
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print Junit XML summary."""
         print(_create_xml(results))
+
+
+class ParallelXmlReporter(XmlReporter):
+    """A reporter for reporting the results of a task as Junit XML."""
+
+    parallel_cmds: bool = True
+
+
+class LiveReporter(Reporter):
+    """A reporter for reporting the results of a task to the console."""
+
+    capture_output: bool = False
+
+    def emit_info(self, msg: str) -> None:
+        """Print to console."""
+        print(msg)
+
+    def emit_start(self, cmd: cmd.Command) -> None:
+        """Do not emit the start of a command."""
+
+    def emit_end(self, result: cmd.Result) -> None:
+        """Do not emit the result at the end of a command."""
+
+    def emit_summary(self, results: list[cmd.Result]) -> None:
+        """Do not emit the summary."""
+
+
+_SERIAL_REPORTERS = {
+    "cli": CliReporter,
+    "live": LiveReporter,
+    "xml": XmlReporter,
+    "json": JsonReporter,
+}
+_PARALLEL_REPORTERS = {
+    "cli": ParallelCliReporter,
+    "live": None,  # cannot set live _and_ parallel.
+    "xml": ParallelXmlReporter,
+    "json": ParallelJsonReporter,
+}
+
+
+def get_reporter(reporter_name: str, *, parallel: bool) -> type[Reporter]:
+    """Get a reporter class for the given reporter name and mode."""
+    if parallel:
+        d = _PARALLEL_REPORTERS
+    else:
+        d = _SERIAL_REPORTERS
+    try:
+        reporter = d[reporter_name]
+    except KeyError:
+        raise ValueError(f"Unknown reporter: {reporter_name}") from None
+    if reporter is None:
+        raise ValueError(
+            f"Reporter '{reporter_name}' cannot be used in "
+            f"{'parallel' if parallel else 'serial'} mode"
+        )
+    return reporter
 
 
 def _plural(size: int) -> str:

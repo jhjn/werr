@@ -50,6 +50,27 @@ NOTE: All commands are run using `uv` (the only dependency of this project).
 
 ### Config
 
+`task.<task> = [...]`
+
+`variable.<variable> = "..."`
+
+`default.task = "..."`
+`default.<task>.reporter` the options are `cli`, `live`, `xml` and `json`
+`default.<task>.parallel = false`
+
+Change the `werr` defaults on a per-task basis to reduce the options required on the CLI.
+
+This is the implicit config:
+
+```toml
+[tool.werr]
+default.task = "check"
+default.check.reporter = "cli"
+default.check.parallel = false
+```
+
+Note that whatever the config says is overriden by the CLI (e.g. using `--live` or `--execute-parallel` or `fix`).
+
 ### CLI
 
 ### Examples

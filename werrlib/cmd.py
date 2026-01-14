@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shlex
 import subprocess
 import time
 from dataclasses import dataclass
@@ -66,20 +67,20 @@ class Command:
         """The name of the task."""
         return self.command.split(" ")[0]
 
-    def run(self, *, cwd: Path | None = None) -> Result:
+    def run(self, *, cwd: Path | None = None, live: bool = False) -> Result:
         """Run the task using `uv` in isolated mode."""
-        return self.start(cwd=cwd).poll(block=True)
+        return self.start(cwd=cwd, live=live).poll(block=True)
 
-    def start(self, *, cwd: Path | None = None) -> Process:
+    def start(self, *, cwd: Path | None = None, live: bool = False) -> Process:
         """Start the task using `uv` in isolated mode."""
         command = ["uv", "run", "bash", "-c", self.command]
-        log.debug("Running command: %s", command)
+        log.debug("Running command: %s", shlex.join(command))
         start = time.monotonic()
         process = subprocess.Popen(
             command,
             text=True,
-            stderr=subprocess.STDOUT,
-            stdout=subprocess.PIPE,
+            stderr=None if live else subprocess.STDOUT,
+            stdout=None if live else subprocess.PIPE,
             cwd=cwd,
             # env is a copy but without the `VIRTUAL_ENV` variable.
             env=os.environ.copy() | {"VIRTUAL_ENV": ""},

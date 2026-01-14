@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import report, task
+from . import config, task
 
 log = logging.getLogger("cli")
 
@@ -98,25 +98,32 @@ def _get_parser() -> argparse.ArgumentParser:
     output_fmt.add_argument(
         "--cli",
         action="store_const",
-        const=report.CliReporter,
+        const="cli",
         dest="reporter",
         help="Print results to the console (default)",
     )
     output_fmt.add_argument(
+        "--live",
+        action="store_const",
+        const="live",
+        dest="reporter",
+        help="Print command output to the console (no results)",
+    )
+    output_fmt.add_argument(
         "--xml",
         action="store_const",
-        const=report.XmlReporter,
+        const="xml",
         dest="reporter",
         help="Print results as Junit XML",
     )
     output_fmt.add_argument(
         "--json",
         action="store_const",
-        const=report.JsonReporter,
+        const="json",
         dest="reporter",
         help="Print results as lines of JSON",
     )
-    parser.set_defaults(reporter=report.CliReporter)
+    parser.set_defaults(reporter=None)  # i.e. let the config decide
 
     return parser
 
@@ -131,14 +138,14 @@ def run(argv: list[str]) -> None:
     root_logger.handlers[0].setFormatter(LogFormatter())
     log.debug("Called with arguments: %s", argv)
 
-    if args.execute_parallel:
-        if args.reporter == report.CliReporter:
-            # Alternative interactive reporter to handle parallelism
-            args.reporter = report.ParallelCliReporter
+    reporter, commands = config.load_project(
+        args.project / "pyproject.toml",
+        cli_task=args.task,
+        cli_reporter=args.reporter,
+        cli_parallel=args.execute_parallel,
+    )
 
-        success = task.run_parallel(args.project, args.task, args.reporter(), args.name)
-    else:
-        success = task.run(args.project, args.task, args.reporter(), args.name)
+    success = task.run(args.project, reporter, commands, args.name)
 
     if not success:
         sys.exit(1)

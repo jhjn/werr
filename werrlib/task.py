@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from . import report
     from .cmd import Command, Process
-
-from . import config, report
 
 DEFAULT = "check"
 
@@ -19,39 +18,37 @@ def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
         return cmds
 
     # first, attempt to match the exact name
-    cmds = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
-    if not cmds:
+    selected = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
+    if not selected:
         # if no matches, attempt to match as a prefix
-        cmds = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
-    if not cmds:
+        selected = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
+    if not selected:
         raise ValueError(
             f"No commands match name: {name_filter}, available: "
             + ", ".join(cmd.name for cmd in cmds)
         )
-    return cmds
+    return selected
 
 
 def run(
-    projectdir: Path,
-    task: str = DEFAULT,
-    reporter: report.Reporter | None = None,
+    project: Path,
+    reporter: report.Reporter,
+    cmds: list[Command],
     name_filter: str | None = None,
 ) -> bool:
     """Run the specified task and return True if all are successful.
 
     Emit results as we go.
     """
-    if reporter is None:
-        reporter = report.CliReporter()
-
-    name, cmds = config.load_project(projectdir / "pyproject.toml", task)
     cmds = _filter_name(cmds, name_filter)
-    reporter.emit_info(f"Project: {name} ({task})")
+
+    if reporter.parallel_cmds:
+        return run_parallel(project, reporter, cmds)
 
     results = []
     for cmd in cmds:
         reporter.emit_start(cmd)
-        result = cmd.run(cwd=projectdir)
+        result = cmd.run(cwd=project, live=not reporter.capture_output)
         results.append(result)
         reporter.emit_end(result)
 
@@ -60,28 +57,16 @@ def run(
     return all(result.success for result in results)
 
 
-def run_parallel(
-    projectdir: Path,
-    task: str = DEFAULT,
-    reporter: report.Reporter | None = None,
-    name_filter: str | None = None,
-) -> bool:
+def run_parallel(project: Path, reporter: report.Reporter, cmds: list[Command]) -> bool:
     """Run the specified task in parallel and return True if all are successful.
 
     Live display reports results as each process completes.
     """
-    if reporter is None:
-        reporter = report.ParallelCliReporter()
-
-    name, cmds = config.load_project(projectdir / "pyproject.toml", task)
-    cmds = _filter_name(cmds, name_filter)
-    reporter.emit_info(f"Project: {name} ({task})")
-
     # kick off all commands
     running: list[Process] = []
     for cmd in cmds:
         reporter.emit_start(cmd)
-        running.append(cmd.start(cwd=projectdir))
+        running.append(cmd.start(cwd=project, live=not reporter.capture_output))
 
     results = []
     while running:

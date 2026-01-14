@@ -50,26 +50,71 @@ NOTE: All commands are run using `uv` (the only dependency of this project).
 
 ### Config
 
-`task.<task> = [...]`
+All werr configuration lives in your `pyproject.toml` under `[tool.werr]`.
 
-`variable.<variable> = "..."`
+#### Tasks
 
-`default.task = "..."`
-`default.<task>.reporter` the options are `cli`, `live`, `xml` and `json`
-`default.<task>.parallel = false`
+```toml
+task.<name> = ["command1", "command2", ...]
+```
 
-Change the `werr` defaults on a per-task basis to reduce the options required on the CLI.
+Define a named task as a list of commands to run in sequence. The task name `task` is reserved and cannot be used.
 
-This is the implicit config:
+```toml
+[tool.werr]
+task.check = ["ruff check {project}", "pytest"]
+task.fix = ["ruff check --fix {project}"]
+```
+
+#### Variables
+
+```toml
+variable.<name> = "value"
+```
+
+Define custom variables for use in commands with `{name}` syntax. Variables can reference other variables and the built-in `{project}` variable (the absolute path to the project directory).
+
+```toml
+[tool.werr]
+variable.src = "{project}/src"
+variable.tests = "{project}/tests"
+task.check = ["ruff check {src}", "pytest {tests}"]
+```
+
+Variables are resolved in order, so later variables can reference earlier ones:
+
+```toml
+[tool.werr]
+variable.base = "src"
+variable.app = "{base}/myapp"
+task.check = ["ruff check {app}"]  # resolves to "ruff check src/myapp"
+```
+
+Unknown variables are preserved as-is (not substituted).
+
+#### Defaults
+
+```toml
+default.task = "<task-name>"
+default.<task>.reporter = "cli" | "json" | "xml"
+default.<task>.parallel = true | false
+```
+
+Configure default behavior to reduce CLI arguments needed.
+
+- `default.task` - the task to run when no task is specified (default: `"check"`)
+- `default.<task>.reporter` - output format for a specific task (default: `"cli"`)
+- `default.<task>.parallel` - whether to run commands in parallel (default: `false`)
 
 ```toml
 [tool.werr]
 default.task = "check"
 default.check.reporter = "cli"
-default.check.parallel = false
+default.check.parallel = true
+default.ci.reporter = "xml"
 ```
 
-Note that whatever the config says is overriden by the CLI (e.g. using `--live` or `--execute-parallel` or `fix`).
+CLI arguments always override config defaults (e.g. `--json`, `--xml`, `-x`).
 
 ### CLI
 

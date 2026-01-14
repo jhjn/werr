@@ -24,7 +24,7 @@ class _IgnoreMissing(dict):
     """A subclass of dict for use in format_map() that ignores missing keys."""
 
     def __missing__(self, key: str) -> str:
-        return "{key}"
+        return f"{{{key}}}"
 
 
 def _command_from_template(command: str, variables: dict[str, str]) -> Command:
@@ -99,7 +99,8 @@ def load_project(
     log.debug("Variables: %s", variables)
 
     # The very last thing the loader does is emit the first info line.
-    reporter.emit_info(f"Project: {name} ({task})")
+    project_name = config["project"]["name"]
+    reporter.emit_info(f"Project: {project_name} ({task})")
     return reporter, [
         _command_from_template(command, variables)
         for command in config["tool"]["werr"]["task"][task]

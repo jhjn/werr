@@ -66,21 +66,21 @@ class Command:
         """The name of the task."""
         return self.command.split(" ")[0]
 
-    def run(self, projectdir: Path) -> Result:
+    def run(self, *, cwd: Path | None = None) -> Result:
         """Run the task using `uv` in isolated mode."""
-        return self.start(projectdir).poll(block=True)
+        return self.start(cwd=cwd).poll(block=True)
 
-    def start(self, projectdir: Path) -> Process:
+    def start(self, *, cwd: Path | None = None) -> Process:
         """Start the task using `uv` in isolated mode."""
-        command = f"uv run --project '{projectdir}' {self.command}"
+        command = ["uv", "run", "bash", "-c", self.command]
         log.debug("Running command: %s", command)
         start = time.monotonic()
         process = subprocess.Popen(
             command,
-            shell=True,
             text=True,
             stderr=subprocess.STDOUT,
             stdout=subprocess.PIPE,
+            cwd=cwd,
             # env is a copy but without the `VIRTUAL_ENV` variable.
             env=os.environ.copy() | {"VIRTUAL_ENV": ""},
         )

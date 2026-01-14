@@ -51,7 +51,7 @@ def run(
     results = []
     for cmd in cmds:
         reporter.emit_start(cmd)
-        result = cmd.run(projectdir)
+        result = cmd.run(cwd=projectdir)
         results.append(result)
         reporter.emit_end(result)
 
@@ -81,7 +81,7 @@ def run_parallel(
     running: list[Process] = []
     for cmd in cmds:
         reporter.emit_start(cmd)
-        running.append(cmd.start(projectdir))
+        running.append(cmd.start(cwd=projectdir))
 
     results = []
     while running:

@@ -38,7 +38,7 @@ dev = [
 package = true
 
 [tool.werr]
-variable.packages = "{project}/werrlib/ {project}/tests/"
+variable.packages = "werrlib/ tests/"
 task.check = [
     "black --check {packages}",
     "ruff check {packages}",
@@ -66,6 +66,7 @@ ignore = [
     "FIX002",  # Allow TODO comments for future enhancements
     "S101",    # Use of `assert` detected
     "S602",    # `subprocess` call with `shell=True` identified, security issue
+    "S603",    # `subprocess` call: check for execution of untrusted input
     "SIM108",  # Use ternary operator
     "T201",    # `print` found
     "TD002",   # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`

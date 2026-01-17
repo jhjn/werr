@@ -38,28 +38,26 @@ dev = [
 package = true
 
 [tool.werr]
-variable.packages = "werrlib/ tests/"
-
+variable = {packages = "werrlib/ tests/"}
 task.check = [
+    {parallel = true},
     "black --check {packages}",
     "ruff check {packages}",
     "ty check {packages}",
     "pytest {project}",
 ]
-default.check.parallel = true
-
 task.fix = [
     "black {packages}",
     "ruff check --fix {packages}",
 ]
-
 task.docs = [
+    {reporter = "live"},
     "mkdocs gh-deploy --force",
 ]
-default.docs.reporter = "live"
-
-task.demo = ["echo hi"]
-default.demo.reporter = "live"
+task.demo = [
+    {reporter = "live"},
+    "echo hi",
+]
 
 [tool.ruff.lint]
 select = ["ALL"]

@@ -9,6 +9,7 @@ import textwrap
 import time
 from _colorize import ANSIColors as C  # ty: ignore[unresolved-import]
 from abc import ABC, abstractmethod
+from typing import Literal
 
 from . import cmd, xml
 
@@ -19,6 +20,8 @@ ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 _SUITENAME = "werr"
 _TOTAL_HEAD_LEN = 25
 _HEAD_PFX = "      "
+
+ReporterName = Literal["cli", "live", "xml", "json"]
 
 
 class Reporter(ABC):

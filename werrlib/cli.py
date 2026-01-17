@@ -88,8 +88,7 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "task",
         nargs="?",
-        default=task.DEFAULT,
-        help=f"Task to run (defined in pyproject.toml, defaults to '{task.DEFAULT}')",
+        help="Task to run (defined in pyproject.toml, defaults to first task in config",
     )
 
     # Output format selection - all options write to 'reporter' dest

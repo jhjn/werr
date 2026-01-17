@@ -9,8 +9,6 @@ if TYPE_CHECKING:
     from . import report
     from .cmd import Command, Process
 
-DEFAULT = "check"
-
 
 def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
     """Filter commands if a name filter is set."""

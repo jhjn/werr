@@ -76,11 +76,12 @@ def load_project(
             raise ValueError("[tool.werr] does not contain any `task` lists") from None
         log.debug("Using default task %s", task)
 
-    # look for config in task list
-    if isinstance(task_list[0], dict):
+    # look for config in task list (optional dict as first element)
+    config_parallel = False
+    config_reporter: report.ReporterName = DEFAULT_REPORTER
+    if task_list and isinstance(task_list[0], dict):
         config_parallel = task_list[0].get("parallel", False)
         config_reporter = task_list[0].get("reporter", DEFAULT_REPORTER)
-        # drop the config dict
         task_list = task_list[1:]
 
     # select the CLI over the config

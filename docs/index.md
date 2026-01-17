@@ -14,8 +14,9 @@ dependencies = [
 ]
 
 [tool.werr]
-# 'check' is the default task if `werr` is run with no arguments.
+# The first task is the default when `werr` is run with no arguments.
 task.check = [
+    {parallel = true},  # optional config: run commands in parallel
     "black --check {project}",
     "isort --check {project}",
     "ruff check {project}",
@@ -29,7 +30,7 @@ task.fix = [
 ]
 ```
 
-Running `werr` executes each `check` command in sequence, printing which failed and how.
+Running `werr` executes each `check` command in sequence (or parallel if configured), printing which failed and how.
 The tool returns a non-zero exit code if any command fails.
 
 Running `werr fix` executes each `fix` command in sequence.
@@ -58,13 +59,52 @@ All werr configuration lives in your `pyproject.toml` under `[tool.werr]`.
 task.<name> = ["command1", "command2", ...]
 ```
 
-Define a named task as a list of commands to run in sequence. The task name `task` is reserved and cannot be used.
+Define a named task as a list of commands to run. The **first task** defined is the default when running `werr` without arguments.
 
 ```toml
 [tool.werr]
-task.check = ["ruff check {project}", "pytest"]
+task.check = ["ruff check {project}", "pytest"]  # default task (first)
 task.fix = ["ruff check --fix {project}"]
 ```
+
+#### Task Options
+
+Each task can have an optional config dict as its **first element** to set task-specific options:
+
+```toml
+task.<name> = [
+    {parallel = true, reporter = "cli"},  # optional config dict
+    "command1",
+    "command2",
+]
+```
+
+Available options:
+
+| Option | Values | Default | Description |
+|--------|--------|---------|-------------|
+| `parallel` | `true` / `false` | `false` | Run commands in parallel |
+| `reporter` | `"cli"`, `"json"`, `"xml"` | `"cli"` | Output format |
+
+Example with different configs per task:
+
+```toml
+[tool.werr]
+task.check = [
+    {parallel = true},
+    "ruff check {project}",
+    "pytest",
+]
+task.ci = [
+    {reporter = "xml"},
+    "pytest --junitxml=results.xml",
+]
+task.fix = [
+    "ruff check --fix {project}",
+]
+```
+
+CLI arguments always override task config (e.g. `--json`, `--xml`, `-x`).
 
 #### Variables
 
@@ -91,30 +131,6 @@ task.check = ["ruff check {app}"]  # resolves to "ruff check src/myapp"
 ```
 
 Unknown variables are preserved as-is (not substituted).
-
-#### Defaults
-
-```toml
-default.task = "<task-name>"
-default.<task>.reporter = "cli" | "json" | "xml"
-default.<task>.parallel = true | false
-```
-
-Configure default behavior to reduce CLI arguments needed.
-
-- `default.task` - the task to run when no task is specified (default: `"check"`)
-- `default.<task>.reporter` - output format for a specific task (default: `"cli"`)
-- `default.<task>.parallel` - whether to run commands in parallel (default: `false`)
-
-```toml
-[tool.werr]
-default.task = "check"
-default.check.reporter = "cli"
-default.check.parallel = true
-default.ci.reporter = "xml"
-```
-
-CLI arguments always override config defaults (e.g. `--json`, `--xml`, `-x`).
 
 ### CLI
 

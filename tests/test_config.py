@@ -71,11 +71,11 @@ task.build = ["make"]
     )
 
     with pytest.raises(ValueError, match=r"does not contain a `task.check` list"):
-        config.load_project(pyproject)
+        config.load_project(pyproject, cli_task="check")
 
 
-def test_task_named_task_forbidden(tmp_path: Path) -> None:
-    """Raise error when task is named 'task' (reserved name)."""
+def test_load_project_no_tasks(tmp_path: Path) -> None:
+    """Raise error when no tasks defined."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -83,19 +83,19 @@ def test_task_named_task_forbidden(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-task.task = ["echo hello"]
+variable.src = "src"
 """
     )
 
-    with pytest.raises(ValueError, match=r"cannot be named 'task'"):
-        config.load_project(pyproject, cli_task="task")
+    with pytest.raises(ValueError, match=r"does not contain any `task` lists"):
+        config.load_project(pyproject)
 
 
-# --- default.* tests ---
+# --- Default task (first in dict) tests ---
 
 
-def test_default_task(tmp_path: Path) -> None:
-    """Use default.task when no CLI task specified."""
+def test_first_task_is_default(tmp_path: Path) -> None:
+    """First task in config is used when no CLI task specified."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -103,9 +103,8 @@ def test_default_task(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.task = "lint"
 task.lint = ["ruff check ."]
-task.check = ["pytest"]
+task.test = ["pytest"]
 """
     )
 
@@ -114,8 +113,8 @@ task.check = ["pytest"]
     assert commands == [Command("ruff check .")]
 
 
-def test_default_task_overridden_by_cli(tmp_path: Path) -> None:
-    """CLI task overrides default.task."""
+def test_cli_task_overrides_default(tmp_path: Path) -> None:
+    """CLI task overrides the default first task."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -123,7 +122,6 @@ def test_default_task_overridden_by_cli(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.task = "lint"
 task.lint = ["ruff check ."]
 task.build = ["make"]
 """
@@ -134,8 +132,11 @@ task.build = ["make"]
     assert commands == [Command("make")]
 
 
-def test_default_reporter(tmp_path: Path) -> None:
-    """Use default.<task>.reporter when no CLI reporter specified."""
+# --- Inline config dict tests ---
+
+
+def test_task_config_parallel(tmp_path: Path) -> None:
+    """Task config dict sets parallel mode."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -143,18 +144,21 @@ def test_default_reporter(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.check.reporter = "json"
-task.check = ["pytest"]
+task.check = [
+    {parallel = true},
+    "pytest",
+]
 """
     )
 
-    reporter, _commands = config.load_project(pyproject)
+    reporter, commands = config.load_project(pyproject)
 
-    assert isinstance(reporter, report.JsonReporter)
+    assert isinstance(reporter, report.ParallelCliReporter)
+    assert commands == [Command("pytest")]
 
 
-def test_default_reporter_overridden_by_cli(tmp_path: Path) -> None:
-    """CLI reporter overrides default.<task>.reporter."""
+def test_task_config_reporter(tmp_path: Path) -> None:
+    """Task config dict sets reporter."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -162,8 +166,98 @@ def test_default_reporter_overridden_by_cli(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.check.reporter = "json"
-task.check = ["pytest"]
+task.check = [
+    {reporter = "json"},
+    "pytest",
+]
+"""
+    )
+
+    reporter, commands = config.load_project(pyproject)
+
+    assert isinstance(reporter, report.JsonReporter)
+    assert commands == [Command("pytest")]
+
+
+def test_task_config_both_options(tmp_path: Path) -> None:
+    """Task config dict can set both parallel and reporter."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+name = "testproject"
+
+[tool.werr]
+task.check = [
+    {parallel = true, reporter = "cli"},
+    "pytest",
+]
+"""
+    )
+
+    reporter, commands = config.load_project(pyproject)
+
+    assert isinstance(reporter, report.ParallelCliReporter)
+    assert commands == [Command("pytest")]
+
+
+def test_task_without_config_dict(tmp_path: Path) -> None:
+    """Task without config dict uses defaults."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+name = "testproject"
+
+[tool.werr]
+task.check = ["pytest", "ruff check ."]
+"""
+    )
+
+    reporter, commands = config.load_project(pyproject)
+
+    assert isinstance(reporter, report.CliReporter)
+    assert not isinstance(reporter, report.ParallelCliReporter)
+    assert commands == [Command("pytest"), Command("ruff check .")]
+
+
+# --- CLI overrides config dict tests ---
+
+
+def test_cli_parallel_overrides_config(tmp_path: Path) -> None:
+    """CLI parallel flag overrides task config."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+name = "testproject"
+
+[tool.werr]
+task.check = [
+    {parallel = false},
+    "pytest",
+]
+"""
+    )
+
+    reporter, _commands = config.load_project(pyproject, cli_parallel=True)
+
+    assert isinstance(reporter, report.ParallelCliReporter)
+
+
+def test_cli_reporter_overrides_config(tmp_path: Path) -> None:
+    """CLI reporter flag overrides task config."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+name = "testproject"
+
+[tool.werr]
+task.check = [
+    {reporter = "json"},
+    "pytest",
+]
 """
     )
 
@@ -172,8 +266,8 @@ task.check = ["pytest"]
     assert isinstance(reporter, report.XmlReporter)
 
 
-def test_default_parallel(tmp_path: Path) -> None:
-    """Use default.<task>.parallel when no CLI parallel specified."""
+def test_cli_overrides_both_config_options(tmp_path: Path) -> None:
+    """CLI flags override both task config options."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -181,33 +275,20 @@ def test_default_parallel(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.check.parallel = true
-task.check = ["pytest"]
+task.check = [
+    {parallel = true, reporter = "json"},
+    "pytest",
+]
 """
     )
 
-    reporter, _commands = config.load_project(pyproject)
-
-    assert isinstance(reporter, report.ParallelCliReporter)
-
-
-def test_default_parallel_overridden_by_cli(tmp_path: Path) -> None:
-    """CLI parallel overrides default.<task>.parallel."""
-    pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text(
-        """
-[project]
-name = "testproject"
-
-[tool.werr]
-default.check.parallel = false
-task.check = ["pytest"]
-"""
+    reporter, _commands = config.load_project(
+        pyproject, cli_parallel=False, cli_reporter="xml"
     )
 
-    reporter, _commands = config.load_project(pyproject, cli_parallel=True)
-
-    assert isinstance(reporter, report.ParallelCliReporter)
+    # cli_parallel=False doesn't override config parallel=true (False is falsy)
+    # but cli_reporter="xml" does override
+    assert isinstance(reporter, report.XmlReporter)
 
 
 # --- variable.* tests ---
@@ -307,11 +388,11 @@ task.check = ["echo {unknown}"]
     assert commands == [Command("echo {unknown}")]
 
 
-# --- Combined defaults + CLI override tests ---
+# --- Combined config + CLI tests ---
 
 
-def test_combined_defaults_no_cli_override(tmp_path: Path) -> None:
-    """Config sets both parallel and reporter; no CLI overrides."""
+def test_config_with_partial_cli_override(tmp_path: Path) -> None:
+    """CLI overrides one option while config provides the other."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -319,69 +400,21 @@ def test_combined_defaults_no_cli_override(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.check.parallel = true
-default.check.reporter = "json"
-task.check = ["pytest"]
+task.check = [
+    {parallel = true, reporter = "json"},
+    "pytest",
+]
 """
     )
 
-    # No CLI args - should get parallel JSON reporter
-    reporter, _commands = config.load_project(pyproject)
-
-    # ParallelCliReporter is used even with json because parallel=true
-    # but json doesn't have a parallel variant, so it falls back
-    assert isinstance(reporter, (report.JsonReporter, report.ParallelCliReporter))
-
-
-def test_combined_defaults_cli_overrides_both(tmp_path: Path) -> None:
-    """Config sets both parallel and reporter; CLI overrides both."""
-    pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text(
-        """
-[project]
-name = "testproject"
-
-[tool.werr]
-default.check.parallel = true
-default.check.reporter = "json"
-task.check = ["pytest"]
-"""
-    )
-
-    # CLI overrides: parallel=False, reporter=xml
-    reporter, _commands = config.load_project(
-        pyproject, cli_parallel=False, cli_reporter="xml"
-    )
-
-    # Should get serial XML reporter (CLI wins)
-    assert isinstance(reporter, report.XmlReporter)
-    assert not isinstance(reporter, report.ParallelCliReporter)
-
-
-def test_combined_defaults_cli_overrides_reporter_only(tmp_path: Path) -> None:
-    """Config sets both parallel and reporter; CLI overrides only reporter."""
-    pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text(
-        """
-[project]
-name = "testproject"
-
-[tool.werr]
-default.check.parallel = true
-default.check.reporter = "json"
-task.check = ["pytest"]
-"""
-    )
-
-    # CLI overrides reporter only; parallel comes from config (true)
+    # Override only reporter, parallel comes from config
     reporter, _commands = config.load_project(pyproject, cli_reporter="cli")
 
-    # Should get parallel CLI reporter
     assert isinstance(reporter, report.ParallelCliReporter)
 
 
-def test_combined_defaults_cli_overrides_parallel_only(tmp_path: Path) -> None:
-    """Config sets both parallel and reporter; CLI overrides only parallel."""
+def test_multiple_tasks_different_configs(tmp_path: Path) -> None:
+    """Different tasks can have different configs."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -389,14 +422,21 @@ def test_combined_defaults_cli_overrides_parallel_only(tmp_path: Path) -> None:
 name = "testproject"
 
 [tool.werr]
-default.check.parallel = false
-default.check.reporter = "cli"
-task.check = ["pytest"]
+task.check = [
+    {parallel = true},
+    "pytest",
+]
+task.ci = [
+    {reporter = "xml"},
+    "pytest",
+]
 """
     )
 
-    # CLI overrides parallel only; reporter comes from config (cli)
-    reporter, _commands = config.load_project(pyproject, cli_parallel=True)
+    # Default task (check) is parallel
+    reporter1, _commands = config.load_project(pyproject)
+    assert isinstance(reporter1, report.ParallelCliReporter)
 
-    # Should get parallel CLI reporter
-    assert isinstance(reporter, report.ParallelCliReporter)
+    # CI task uses XML reporter
+    reporter2, _commands = config.load_project(pyproject, cli_task="ci")
+    assert isinstance(reporter2, report.XmlReporter)

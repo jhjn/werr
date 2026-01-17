@@ -22,7 +22,7 @@ def console_entry() -> None:
         log.error(str(e.stdout).strip())  # noqa: TRY400
         log.error(str(e.stderr).strip())  # noqa: TRY400
         sys.exit(e.returncode)
-    except Exception as e:  # noqa: BLE001
+    except ValueError as e:
         log.debug(traceback.format_exc())
         log.error(e)  # noqa: TRY400
         sys.exit(1)

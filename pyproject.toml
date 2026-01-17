@@ -38,18 +38,25 @@ dev = [
 package = true
 
 [tool.werr]
+variable = {packages = "werrlib/ tests/"}
 task.check = [
-    "black --check {project}/werrlib",
-    "ruff check {project}/werrlib",
-    "ty check {project}/werrlib",
-    "pytest --config-file {project}/pyproject.toml",
+    {parallel = true},
+    "black --check {packages}",
+    "ruff check {packages}",
+    "ty check {packages}",
+    "pytest {project}",
 ]
 task.fix = [
-    "black {project}/werrlib",
-    "ruff check --fix {project}/werrlib",
+    "black {packages}",
+    "ruff check --fix {packages}",
 ]
 task.docs = [
+    {reporter = "live"},
     "mkdocs gh-deploy --force",
+]
+task.demo = [
+    {reporter = "live"},
+    "echo hi",
 ]
 
 [tool.ruff.lint]
@@ -65,6 +72,7 @@ ignore = [
     "FIX002",  # Allow TODO comments for future enhancements
     "S101",    # Use of `assert` detected
     "S602",    # `subprocess` call with `shell=True` identified, security issue
+    "S603",    # `subprocess` call: check for execution of untrusted input
     "SIM108",  # Use ternary operator
     "T201",    # `print` found
     "TD002",   # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`

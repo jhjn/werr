@@ -4,6 +4,10 @@ site_url: https://github.com/pages/jhjn/werr
 theme:
   name: material
   logo: https://openmoji.org/data/color/svg/2699.svg
+  features:
+    - toc.integrate
+    - content.code.copy
+    # @@@ fix syntax highlighting
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
@@ -23,8 +27,8 @@ theme:
         icon: material/brightness-4
         name: Switch to system preference
 repo_url: https://github.com/jhjn/werr
-repo_name: werr
-nav:
-  - Introduction: index.md
-  - Guide: guide.md
-  - Reference: reference.md
+repo_name: jhjn/werr
+extra_css:
+  - no_nav_title.css
+markdown_extensions:
+  - attr_list

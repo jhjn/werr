@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shlex
 import subprocess
 import time
 from dataclasses import dataclass
@@ -66,25 +67,21 @@ class Command:
         """The name of the task."""
         return self.command.split(" ")[0]
 
-    def resolved_command(self, projectdir: Path) -> str:
-        """Return the command with the {...} variables substituted."""
-        return self.command.replace("{project}", str(projectdir.resolve()))
-
-    def run(self, projectdir: Path) -> Result:
+    def run(self, *, cwd: Path | None = None, live: bool = False) -> Result:
         """Run the task using `uv` in isolated mode."""
-        return self.start(projectdir).poll(block=True)
+        return self.start(cwd=cwd, live=live).poll(block=True)
 
-    def start(self, projectdir: Path) -> Process:
+    def start(self, *, cwd: Path | None = None, live: bool = False) -> Process:
         """Start the task using `uv` in isolated mode."""
-        command = f"uv run --project '{projectdir}' {self.resolved_command(projectdir)}"
-        log.debug("Running command: %s", command)
+        command = ["uv", "run", "bash", "-c", self.command]
+        log.debug("Running command: %s", shlex.join(command))
         start = time.monotonic()
         process = subprocess.Popen(
             command,
-            shell=True,
             text=True,
-            stderr=subprocess.STDOUT,
-            stdout=subprocess.PIPE,
+            stderr=None if live else subprocess.STDOUT,
+            stdout=None if live else subprocess.PIPE,
+            cwd=cwd,
             # env is a copy but without the `VIRTUAL_ENV` variable.
             env=os.environ.copy() | {"VIRTUAL_ENV": ""},
         )

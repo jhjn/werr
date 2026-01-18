@@ -21,6 +21,8 @@ _TOTAL_HEAD_LEN = 25
 _HEAD_PFX = "      "
 
 ReporterName = Literal["cli", "live", "xml", "json"]
+_SERIAL_REPORTERS: dict[ReporterName, type[Reporter]] = {}
+_PARALLEL_REPORTERS: dict[ReporterName, type[Reporter]] = {}
 
 
 class Reporter:
@@ -30,8 +32,21 @@ class Reporter:
     Subclasses override methods to report each situation.
     """
 
+    name: ReporterName
     capture_output: bool = True
     parallel_cmds: bool = False
+
+    def __init_subclass__(cls) -> None:
+        """Add each inheriting class to the _REPORTERS dict."""
+        if cls.parallel_cmds:
+            _PARALLEL_REPORTERS[cls.name] = cls
+        else:
+            _SERIAL_REPORTERS[cls.name] = cls
+
+    @property
+    def full_name(self) -> str:
+        """The full name of the reporter."""
+        return f"{self.name}.parallel" if self.parallel_cmds else self.name
 
     def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
         """List a task."""
@@ -52,6 +67,7 @@ class Reporter:
 class CliReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
 
+    name: ReporterName = "cli"
     start_time: float | None = None
 
     icon_wait = f"{C.YELLOW}o{C.RESET}"
@@ -68,8 +84,8 @@ class CliReporter(Reporter):
     def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
         """List a task."""
         config = ""
-        if not isinstance(reporter, CliReporter):
-            config = f" ({_REPORTER_NAMES[type(reporter)]})"
+        if reporter.parallel_cmds or not isinstance(reporter, CliReporter):
+            config = f" ({reporter.full_name})"
 
         print(
             f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{config}{C.RESET}\n"
@@ -156,6 +172,8 @@ class ParallelCliReporter(CliReporter):
 class JsonReporter(Reporter):
     """A reporter for reporting the results of a task in lines of JSON."""
 
+    name: ReporterName = "json"
+
     def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
         """List a task."""
         for c in cmds:
@@ -163,8 +181,8 @@ class JsonReporter(Reporter):
                 json.dumps(
                     {
                         "task": name,
-                        "reporter": _REPORTER_NAMES[type(reporter)].split(".")[0],
-                        "parallel": ".parallel" in _REPORTER_NAMES[type(reporter)],
+                        "reporter": reporter.name,
+                        "parallel": reporter.parallel_cmds,
                         "command": c.command,
                     }
                 )
@@ -194,6 +212,8 @@ class ParallelJsonReporter(JsonReporter):
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
 
+    name: ReporterName = "xml"
+
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print Junit XML summary."""
         print(_create_xml(results))
@@ -208,6 +228,7 @@ class ParallelXmlReporter(XmlReporter):
 class LiveReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
 
+    name: ReporterName = "live"
     capture_output: bool = False
 
     def emit_info(self, msg: str) -> None:
@@ -215,30 +236,7 @@ class LiveReporter(Reporter):
         print(msg)
 
 
-_SERIAL_REPORTERS = {
-    "cli": CliReporter,
-    "live": LiveReporter,
-    "xml": XmlReporter,
-    "json": JsonReporter,
-}
-_PARALLEL_REPORTERS = {
-    "cli": ParallelCliReporter,
-    "live": None,  # cannot set live _and_ parallel.
-    "xml": ParallelXmlReporter,
-    "json": ParallelJsonReporter,
-}
-_REPORTER_NAMES = {
-    CliReporter: "cli",
-    LiveReporter: "live",
-    JsonReporter: "json",
-    XmlReporter: "xml",
-    ParallelCliReporter: "cli.parallel",
-    ParallelJsonReporter: "json.parallel",
-    ParallelXmlReporter: "xml.parallel",
-}
-
-
-def get_reporter(reporter_name: str, *, parallel: bool) -> type[Reporter]:
+def get_reporter(reporter_name: ReporterName, *, parallel: bool) -> type[Reporter]:
     """Get a reporter class for the given reporter name and mode."""
     if parallel:
         d = _PARALLEL_REPORTERS

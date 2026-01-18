@@ -44,7 +44,7 @@ task.check = [
     "black --check {packages}",
     "ruff check {packages}",
     "ty check {packages}",
-    "pytest {project}",
+    "pytest",
 ]
 task.fix = [
     "black {packages}",

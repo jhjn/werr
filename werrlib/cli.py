@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import config, task
+from . import config, report, task
 
 log = logging.getLogger("cli")
 
@@ -62,6 +62,13 @@ def _get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
+
+    parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List available tasks and exit (combines with --json)",
     )
 
     parser.add_argument(
@@ -136,6 +143,15 @@ def run(argv: list[str]) -> None:
     root_logger.addHandler(logging.StreamHandler(sys.stdout))
     root_logger.handlers[0].setFormatter(LogFormatter())
     log.debug("Called with arguments: %s", argv)
+
+    if args.list:
+        reporter = (
+            report.JsonReporter() if args.reporter == "json" else report.CliReporter()
+        )
+        tasks = config.load(args.project / "pyproject.toml")
+        for t in tasks:
+            reporter.emit_task(t.name, t.reporter, t.commands)
+        return
 
     reporter, commands = config.load_project(
         args.project / "pyproject.toml",

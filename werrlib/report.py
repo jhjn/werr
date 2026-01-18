@@ -8,7 +8,6 @@ import re
 import textwrap
 import time
 from _colorize import ANSIColors as C  # ty: ignore[unresolved-import]
-from abc import ABC, abstractmethod
 from typing import Literal
 
 from . import cmd, xml
@@ -24,25 +23,28 @@ _HEAD_PFX = "      "
 ReporterName = Literal["cli", "live", "xml", "json"]
 
 
-class Reporter(ABC):
-    """A reporter for reporting the results of a task."""
+class Reporter:
+    """A reporter for reporting the results of a task.
+
+    The base reporter prints nothing for each emission method.
+    Subclasses override methods to report each situation.
+    """
 
     capture_output: bool = True
     parallel_cmds: bool = False
 
-    @abstractmethod
+    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+        """List a task."""
+
     def emit_info(self, msg: str) -> None:
         """Print a message (for an interactive reader)."""
 
-    @abstractmethod
     def emit_start(self, cmd: cmd.Command) -> None:
         """What is printed before a command begins."""
 
-    @abstractmethod
     def emit_end(self, result: cmd.Result) -> None:
         """What is printed after a command completes."""
 
-    @abstractmethod
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """What is printed after the task has completed."""
 
@@ -62,6 +64,17 @@ class CliReporter(Reporter):
 
     def _clear_line(self) -> None:
         print("\r\033[K", end="", flush=True)
+
+    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+        """List a task."""
+        config = ""
+        if not isinstance(reporter, CliReporter):
+            config = f" ({_REPORTER_NAMES[type(reporter)]})"
+
+        print(
+            f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{config}{C.RESET}\n"
+            + "\n".join(f"  {C.GREY}{c.command}{C.RESET}" for c in cmds)
+        )
 
     def emit_info(self, msg: str) -> None:
         """Print to console."""
@@ -143,11 +156,19 @@ class ParallelCliReporter(CliReporter):
 class JsonReporter(Reporter):
     """A reporter for reporting the results of a task in lines of JSON."""
 
-    def emit_info(self, msg: str) -> None:
-        """Print nothing."""
-
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Print nothing."""
+    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+        """List a task."""
+        for c in cmds:
+            print(
+                json.dumps(
+                    {
+                        "task": name,
+                        "reporter": _REPORTER_NAMES[type(reporter)].split(".")[0],
+                        "parallel": ".parallel" in _REPORTER_NAMES[type(reporter)],
+                        "command": c.command,
+                    }
+                )
+            )
 
     def emit_end(self, result: cmd.Result) -> None:
         """Emit the end of a command."""
@@ -163,9 +184,6 @@ class JsonReporter(Reporter):
             )
         )
 
-    def emit_summary(self, results: list[cmd.Result]) -> None:
-        """Print nothing."""
-
 
 class ParallelJsonReporter(JsonReporter):
     """A reporter for reporting the results of a task in lines of JSON."""
@@ -175,15 +193,6 @@ class ParallelJsonReporter(JsonReporter):
 
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
-
-    def emit_info(self, msg: str) -> None:
-        """Print nothing."""
-
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Print nothing."""
-
-    def emit_end(self, result: cmd.Result) -> None:
-        """Print nothing."""
 
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print Junit XML summary."""
@@ -205,15 +214,6 @@ class LiveReporter(Reporter):
         """Print to console."""
         print(msg)
 
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Do not emit the start of a command."""
-
-    def emit_end(self, result: cmd.Result) -> None:
-        """Do not emit the result at the end of a command."""
-
-    def emit_summary(self, results: list[cmd.Result]) -> None:
-        """Do not emit the summary."""
-
 
 _SERIAL_REPORTERS = {
     "cli": CliReporter,
@@ -226,6 +226,15 @@ _PARALLEL_REPORTERS = {
     "live": None,  # cannot set live _and_ parallel.
     "xml": ParallelXmlReporter,
     "json": ParallelJsonReporter,
+}
+_REPORTER_NAMES = {
+    CliReporter: "cli",
+    LiveReporter: "live",
+    JsonReporter: "json",
+    XmlReporter: "xml",
+    ParallelCliReporter: "cli.parallel",
+    ParallelJsonReporter: "json.parallel",
+    ParallelXmlReporter: "xml.parallel",
 }
 
 

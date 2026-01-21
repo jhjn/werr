@@ -1,6 +1,7 @@
 """Loading of python project config for checking."""
 
 import logging
+import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -8,17 +9,60 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-try:
-    import tomllib as tomli
-except ImportError:
-    import tomli  # type: ignore[import]
-
 from . import report
 from .cmd import Command
 
 log = logging.getLogger("config")
 
 DEFAULT_REPORTER: report.ReporterName = "cli"
+
+
+@dataclass(slots=True)
+class Config:
+    """Parsed pyproject.toml."""
+
+    path: Path
+    _config: dict[str, Any]
+
+    _werr_cache: Config | None = None  # Cache of config starting at tool.werr
+
+    @classmethod
+    def load(cls, pyproject: Path) -> Config:
+        """Load python project config from file."""
+        if not pyproject.exists():
+            raise ValueError(
+                f"project directory `{pyproject.parent}` does not contain a "
+                "`pyproject.toml`"
+            )
+        return cls(pyproject, tomllib.loads(pyproject.read_text()))
+
+    def get(self, path: str) -> Any | None:  # noqa: ANN401
+        """Get nested config item or None if it doesn't exist.
+
+        Path looks like 'key1.key2.key3'.
+        """
+        item: Any = self._config
+        key = "<root>"
+        try:
+            for key in path.split("."):
+                item = item[key]
+            log.debug("Found %s=%s in %s", path, item, self.path)
+        except (KeyError, TypeError):
+            log.debug(
+                "Reading path '%s' in %s. Could not find key '%s'", path, self.path, key
+            )
+            item = None
+        return item
+
+    @property
+    def werr(self) -> Config:
+        """Get the config starting at tool.werr."""
+        if self._werr_cache is None:
+            werr_config = self.get("tool.werr")
+            if werr_config is None:
+                raise ValueError(f"[tool.werr] section not found in `{self.path}`")
+            self._werr_cache = Config(self.path, werr_config)
+        return self._werr_cache
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,15 +87,21 @@ def _command_from_template(command: str, variables: dict[str, str]) -> Command:
     return Command(command.format_map(_IgnoreMissing(variables)))
 
 
-def _get_tasks(taskmap: dict[str, Any], variables: dict[str, str]) -> Iterator[Task]:
+def _get_tasks(
+    taskmap: dict[str, Any] | None, variables: dict[str, str]
+) -> Iterator[Task]:
     """Get Task objects from the mapping of task name to list of commands."""
-    for name, commands_ in taskmap.items():
-        if isinstance(commands_[0], dict):
-            configdict = commands_[0]
-            commands = commands_[1:]  # remove the configdict element
+    if not taskmap:
+        log.debug("no configured tasks found")
+        return
+
+    for name, cfg_commands in taskmap.items():
+        if isinstance(cfg_commands[0], dict):
+            configdict = cfg_commands[0]
+            commands = cfg_commands[1:]  # remove the configdict element
         else:
             configdict = {}
-            commands = commands_
+            commands = cfg_commands
 
         reporter = report.get_reporter(
             reporter_name=configdict.get("reporter", DEFAULT_REPORTER),
@@ -65,36 +115,17 @@ def _get_tasks(taskmap: dict[str, Any], variables: dict[str, str]) -> Iterator[T
         )
 
 
-def _load(pyproject: Path) -> tuple[dict[str, Any], list[Task]]:
+def _load(pyproject: Path) -> tuple[Config, list[Task]]:
     """Load all configured tasks."""
-    if not pyproject.exists():
-        raise ValueError(
-            f"project directory `{pyproject.parent}` does not contain a "
-            "`pyproject.toml`"
-        )
+    config = Config.load(pyproject)
 
-    with pyproject.open("rb") as f:
-        config = tomli.load(f)
-
-    # validation of [tool.werr] section
-    try:
-        werr = config["tool"]["werr"]
-    except KeyError:
-        raise ValueError(
-            f"`{pyproject}` does not contain a [tool.werr] section"
-        ) from None
-
-    # variables: by default just contains {project}
-    variables: dict[str, str] = {"project": str(pyproject.parent.resolve())}
-    if "variable" in config["tool"]["werr"]:
-        assert isinstance(
-            config["tool"]["werr"]["variable"], dict
-        ), "tool.werr.variable must be a table mapping variable name to value"
-        for name, value in config["tool"]["werr"]["variable"].items():
-            variables[name] = value.format_map(_IgnoreMissing(variables))
+    variables: dict[str, str] = config.werr.get("variable") or {}
+    assert isinstance(
+        variables, dict
+    ), "tool.werr.variable must be a table mapping variable name to value"
     log.debug("Variables: %s", variables)
 
-    return config, list(_get_tasks(werr["task"], variables))
+    return config, list(_get_tasks(config.werr.get("task"), variables))
 
 
 def load(pyproject: Path) -> list[Task]:
@@ -129,7 +160,8 @@ def load_task(
     )()
 
     # The very last thing the loader does is emit the first info line.
-    project_name = config["project"]["name"]
-    reporter.emit_info(f"Project: {project_name} ({configured_task.name})")
+    reporter.emit_info(
+        f"Project: {config.get('project.name')} ({configured_task.name})"
+    )
 
     return Task(configured_task.name, reporter, configured_task.commands)

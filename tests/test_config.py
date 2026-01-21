@@ -29,7 +29,7 @@ task.check = ["ruff check .", "pytest"]
 """
     )
 
-    reporter, commands = config.load_project(pyproject)
+    reporter, commands = config.load_task(pyproject)
 
     assert isinstance(reporter, report.CliReporter)
     assert commands == [Command("ruff check ."), Command("pytest")]
@@ -40,7 +40,7 @@ def test_load_project_missing_file(tmp_path: Path) -> None:
     pyproject = tmp_path / "pyproject.toml"
 
     with pytest.raises(ValueError, match=r"does not contain a `pyproject.toml`"):
-        config.load_project(pyproject)
+        config.load_task(pyproject)
 
 
 def test_load_project_missing_werr_section(tmp_path: Path) -> None:
@@ -54,7 +54,7 @@ name = "testproject"
     )
 
     with pytest.raises(ValueError, match=r"does not contain a \[tool.werr\] section"):
-        config.load_project(pyproject)
+        config.load_task(pyproject)
 
 
 def test_load_project_missing_task(tmp_path: Path) -> None:
@@ -71,7 +71,7 @@ task.build = ["make"]
     )
 
     with pytest.raises(ValueError, match=r"does not contain a `task.check` list"):
-        config.load_project(pyproject, cli_task="check")
+        config.load_task(pyproject, cli_task="check")
 
 
 def test_load_project_no_tasks(tmp_path: Path) -> None:
@@ -88,7 +88,7 @@ variable.src = "src"
     )
 
     with pytest.raises(ValueError, match=r"does not contain any `task` lists"):
-        config.load_project(pyproject)
+        config.load_task(pyproject)
 
 
 # --- Default task (first in dict) tests ---
@@ -108,7 +108,7 @@ task.test = ["pytest"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject)
+    _reporter, commands = config.load_task(pyproject)
 
     assert commands == [Command("ruff check .")]
 
@@ -127,7 +127,7 @@ task.build = ["make"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject, cli_task="build")
+    _reporter, commands = config.load_task(pyproject, cli_task="build")
 
     assert commands == [Command("make")]
 
@@ -151,7 +151,7 @@ task.check = [
 """
     )
 
-    reporter, commands = config.load_project(pyproject)
+    reporter, commands = config.load_task(pyproject)
 
     assert isinstance(reporter, report.ParallelCliReporter)
     assert commands == [Command("pytest")]
@@ -173,7 +173,7 @@ task.check = [
 """
     )
 
-    reporter, commands = config.load_project(pyproject)
+    reporter, commands = config.load_task(pyproject)
 
     assert isinstance(reporter, report.JsonReporter)
     assert commands == [Command("pytest")]
@@ -195,7 +195,7 @@ task.check = [
 """
     )
 
-    reporter, commands = config.load_project(pyproject)
+    reporter, commands = config.load_task(pyproject)
 
     assert isinstance(reporter, report.ParallelCliReporter)
     assert commands == [Command("pytest")]
@@ -214,7 +214,7 @@ task.check = ["pytest", "ruff check ."]
 """
     )
 
-    reporter, commands = config.load_project(pyproject)
+    reporter, commands = config.load_task(pyproject)
 
     assert isinstance(reporter, report.CliReporter)
     assert not isinstance(reporter, report.ParallelCliReporter)
@@ -240,7 +240,7 @@ task.check = [
 """
     )
 
-    reporter, _commands = config.load_project(pyproject, cli_parallel=True)
+    reporter, _commands = config.load_task(pyproject, cli_parallel=True)
 
     assert isinstance(reporter, report.ParallelCliReporter)
 
@@ -261,7 +261,7 @@ task.check = [
 """
     )
 
-    reporter, _commands = config.load_project(pyproject, cli_reporter="xml")
+    reporter, _commands = config.load_task(pyproject, cli_reporter="xml")
 
     assert isinstance(reporter, report.XmlReporter)
 
@@ -282,7 +282,7 @@ task.check = [
 """
     )
 
-    reporter, _commands = config.load_project(
+    reporter, _commands = config.load_task(
         pyproject, cli_parallel=False, cli_reporter="xml"
     )
 
@@ -308,7 +308,7 @@ task.check = ["ruff check {src}"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject)
+    _reporter, commands = config.load_task(pyproject)
 
     assert commands == [Command("ruff check src/app")]
 
@@ -328,7 +328,7 @@ task.check = ["ruff check {app}"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject)
+    _reporter, commands = config.load_task(pyproject)
 
     assert commands == [Command("ruff check src/app")]
 
@@ -346,7 +346,7 @@ task.check = ["ruff check {project}/src"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject)
+    _reporter, commands = config.load_task(pyproject)
 
     assert commands == [Command(f"ruff check {tmp_path.resolve()}/src")]
 
@@ -365,7 +365,7 @@ task.check = ["ruff check {src}"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject)
+    _reporter, commands = config.load_task(pyproject)
 
     assert commands == [Command(f"ruff check {tmp_path.resolve()}/src")]
 
@@ -383,7 +383,7 @@ task.check = ["echo {unknown}"]
 """
     )
 
-    _reporter, commands = config.load_project(pyproject)
+    _reporter, commands = config.load_task(pyproject)
 
     assert commands == [Command("echo {unknown}")]
 
@@ -408,7 +408,7 @@ task.check = [
     )
 
     # Override only reporter, parallel comes from config
-    reporter, _commands = config.load_project(pyproject, cli_reporter="cli")
+    reporter, _commands = config.load_task(pyproject, cli_reporter="cli")
 
     assert isinstance(reporter, report.ParallelCliReporter)
 
@@ -434,9 +434,9 @@ task.ci = [
     )
 
     # Default task (check) is parallel
-    reporter1, _commands = config.load_project(pyproject)
+    reporter1, _commands = config.load_task(pyproject)
     assert isinstance(reporter1, report.ParallelCliReporter)
 
     # CI task uses XML reporter
-    reporter2, _commands = config.load_project(pyproject, cli_task="ci")
+    reporter2, _commands = config.load_task(pyproject, cli_task="ci")
     assert isinstance(reporter2, report.XmlReporter)

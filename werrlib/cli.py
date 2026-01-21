@@ -153,14 +153,14 @@ def run(argv: list[str]) -> None:
             reporter.emit_task(t.name, t.reporter, t.commands)
         return
 
-    reporter, commands = config.load_project(
+    t = config.load_task(
         args.project / "pyproject.toml",
         cli_task=args.task,
         cli_reporter=args.reporter,
         cli_parallel=args.execute_parallel,
     )
 
-    success = task.run(args.project, reporter, commands, args.name)
+    success = task.run(args.project, t.reporter, t.commands, args.name)
 
     if not success:
         sys.exit(1)

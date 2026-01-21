@@ -65,7 +65,9 @@ def test_get_reporter_live_parallel_raises() -> None:
 def test_get_reporter_unknown_raises() -> None:
     """Unknown reporter name raises."""
     with pytest.raises(ValueError, match="Unknown reporter"):
-        report.get_reporter("invalid", parallel=False)
+        report.get_reporter(
+            "invalid", parallel=False  # ty: ignore[invalid-argument-type]
+        )
 
 
 # --- Reporter attributes ---

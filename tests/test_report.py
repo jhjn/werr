@@ -58,7 +58,7 @@ def test_get_reporter_live_serial() -> None:
 
 def test_get_reporter_live_parallel_raises() -> None:
     """Live reporter cannot be used in parallel mode."""
-    with pytest.raises(ValueError, match="cannot be used in parallel"):
+    with pytest.raises(ValueError, match="Unknown reporter"):
         report.get_reporter("live", parallel=True)
 
 

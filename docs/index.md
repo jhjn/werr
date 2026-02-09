@@ -73,7 +73,7 @@ Each task can have an optional config dict as its **first element** to set task-
 
 ```toml
 task.<name> = [
-    {parallel = true, reporter = "cli"},  # optional config dict
+    {parallel = true},  # optional config dict as first list element
     "command1",
     "command2",
 ]

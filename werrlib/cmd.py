@@ -61,10 +61,13 @@ class Command:
     """A command to be run as part of a task."""
 
     command: str
+    use_dashname: bool = False
 
     @property
     def name(self) -> str:
         """The name of the task."""
+        if self.use_dashname:
+            return "-".join(self.command.split(" ")[0:2])
         return self.command.split(" ")[0]
 
     def run(self, *, cwd: Path | None = None, live: bool = False) -> Result:

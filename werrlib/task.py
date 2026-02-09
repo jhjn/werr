@@ -38,6 +38,7 @@ def run(
 
     Emit results as we go.
     """
+    # @@@ run a uv sync first?
     cmds = _filter_name(cmds, name_filter)
 
     if reporter.parallel_cmds:

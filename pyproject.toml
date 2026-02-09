@@ -51,11 +51,11 @@ task.fix = [
     "ruff check --fix {packages}",
 ]
 task.docs = [
-    {reporter = "live"},
+    {live = true},
     "mkdocs gh-deploy --force",
 ]
 task.demo = [
-    {reporter = "live"},
+    {live = true},
     "echo hi",
 ]
 

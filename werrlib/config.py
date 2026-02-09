@@ -14,8 +14,6 @@ from .cmd import Command
 
 log = logging.getLogger("config")
 
-DEFAULT_REPORTER: report.ReporterName = "cli"
-
 
 @dataclass(slots=True)
 class Config:
@@ -103,16 +101,29 @@ def _get_tasks(
             configdict = {}
             commands = cfg_commands
 
+        if configdict.get("live", False):
+            reporter = "live"
+        else:
+            reporter = "cli"  # default reporter
+
         reporter = report.get_reporter(
-            reporter_name=configdict.get("reporter", DEFAULT_REPORTER),
+            reporter_name=reporter,
             parallel=configdict.get("parallel", False),
         )()
 
-        yield Task(
-            name,
-            reporter,
-            [_command_from_template(command, variables) for command in commands],
-        )
+        first_cmds = [
+            _command_from_template(command, variables) for command in commands
+        ]
+        final_cmds = []
+        # Get set of commands that have more than one common name
+        names = [cmd.name for cmd in first_cmds]
+        for cmd in first_cmds:
+            if names.count(cmd.name):
+                final_cmds.append(Command(cmd.command, use_dashname=True))
+            else:
+                final_cmds.append(cmd)
+
+        yield Task(name, reporter, final_cmds)
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -120,9 +131,8 @@ def _load(pyproject: Path) -> tuple[Config, list[Task]]:
     config = Config.load(pyproject)
 
     variables: dict[str, str] = config.werr.get("variable") or {}
-    assert isinstance(
-        variables, dict
-    ), "tool.werr.variable must be a table mapping variable name to value"
+    err = "tool.werr.variable must be a table mapping variable name to value"
+    assert isinstance(variables, dict), err
     log.debug("Variables: %s", variables)
 
     return config, list(_get_tasks(config.werr.get("task"), variables))

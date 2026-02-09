@@ -83,9 +83,12 @@ class CliReporter(Reporter):
 
     def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
         """List a task."""
-        config = ""
-        if reporter.parallel_cmds or not isinstance(reporter, CliReporter):
-            config = f" ({reporter.full_name})"
+        if reporter.parallel_cmds:
+            config = " (parallel)"
+        elif reporter.name == "live":
+            config = " (live)"
+        else:
+            config = ""
 
         print(
             f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{config}{C.RESET}\n"

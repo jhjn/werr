@@ -160,7 +160,13 @@ def run(argv: list[str]) -> None:
         cli_parallel=args.execute_parallel,
     )
 
-    success = task.run(args.project, t.reporter, t.commands, args.name)
+    if args.verbose and isinstance(t.reporter, report.ParallelCliReporter):
+        # downgrade to serial reporter if going to be printing debug output
+        reporter = report.CliReporter()
+    else:
+        reporter = t.reporter
+
+    success = task.run(args.project, reporter, t.commands, args.name)
 
     if not success:
         sys.exit(1)

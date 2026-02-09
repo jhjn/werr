@@ -13,7 +13,7 @@ from werrlib.cmd import Command, Result
 def _make_result(name: str, *, success: bool = True, output: str = "") -> Result:
     """Create a Result for testing."""
     return Result(
-        Command(name), returncode=0 if success else 1, duration=0.5, output=output
+        Command([name]), returncode=0 if success else 1, duration=0.5, output=output
     )
 
 

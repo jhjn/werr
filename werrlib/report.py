@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import shlex
 import textwrap
 import time
 from _colorize import ANSIColors as C  # ty: ignore[unresolved-import]
@@ -92,7 +93,7 @@ class CliReporter(Reporter):
 
         print(
             f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{config}{C.RESET}\n"
-            + "\n".join(f"  {C.GREY}{c.command}{C.RESET}" for c in cmds)
+            + "\n".join(f"  {C.GREY}{shlex.join(c.command)}{C.RESET}" for c in cmds)
         )
 
     def emit_info(self, msg: str) -> None:
@@ -140,7 +141,7 @@ class ParallelCliReporter(CliReporter):
 
     parallel_cmds: bool = True
 
-    _commands: list[str]
+    _commands: list[list[str]]
 
     def __init__(self) -> None:
         """Initialise the parallel CLI reporter."""
@@ -186,7 +187,7 @@ class JsonReporter(Reporter):
                         "task": name,
                         "reporter": reporter.name,
                         "parallel": reporter.parallel_cmds,
-                        "command": c.command,
+                        "command": shlex.join(c.command),
                     }
                 )
             )
@@ -197,7 +198,7 @@ class JsonReporter(Reporter):
             json.dumps(
                 {
                     "name": result.cmd.name,
-                    "command": result.cmd.command,
+                    "command": shlex.join(result.cmd.command),
                     "duration": result.duration,
                     "output": ansi_escape.sub("", result.output),
                     "success": result.success,

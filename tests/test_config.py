@@ -108,11 +108,11 @@ task.check = ["ruff check .", "ruff format --check .", "pytest"]
     tasks = config.load(pyproject)
 
     cmds = tasks[0].commands
-    assert cmds[0] == Command("ruff check .", use_dashname=True)
+    assert cmds[0] == Command(["ruff", "check", "."], use_dashname=True)
     assert cmds[0].name == "ruff-check"
-    assert cmds[1] == Command("ruff format --check .", use_dashname=True)
+    assert cmds[1] == Command(["ruff", "format", "--check", "."], use_dashname=True)
     assert cmds[1].name == "ruff-format"
-    assert cmds[2] == Command("pytest", use_dashname=False)
+    assert cmds[2] == Command(["pytest"], use_dashname=False)
     assert cmds[2].name == "pytest"
 
 
@@ -146,7 +146,7 @@ task.check = ["ruff check .", "pytest"]
 
     assert task.name == "check"
     assert isinstance(task.reporter, report.CliReporter)
-    assert task.commands == [Command("ruff check ."), Command("pytest")]
+    assert task.commands == [Command(["ruff", "check", "."]), Command(["pytest"])]
 
 
 def test_load_task_missing_werr_section(tmp_path: Path) -> None:
@@ -198,7 +198,7 @@ task.test = ["pytest"]
     task = config.load_task(pyproject)
 
     assert task.name == "lint"
-    assert task.commands == [Command("ruff check .")]
+    assert task.commands == [Command(["ruff", "check", "."])]
 
 
 def test_cli_task_overrides_default(tmp_path: Path) -> None:
@@ -215,7 +215,7 @@ task.build = ["make"]
     task = config.load_task(pyproject, cli_task="build")
 
     assert task.name == "build"
-    assert task.commands == [Command("make")]
+    assert task.commands == [Command(["make"])]
 
 
 # --- Inline config dict tests ---
@@ -237,7 +237,7 @@ task.check = [
     task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.ParallelCliReporter)
-    assert task.commands == [Command("pytest")]
+    assert task.commands == [Command(["pytest"])]
 
 
 def test_task_config_live(tmp_path: Path) -> None:
@@ -256,7 +256,7 @@ task.check = [
     task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.LiveReporter)
-    assert task.commands == [Command("pytest")]
+    assert task.commands == [Command(["pytest"])]
 
 
 def test_task_config_both_options(tmp_path: Path) -> None:
@@ -275,7 +275,7 @@ task.check = [
     task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.ParallelCliReporter)
-    assert task.commands == [Command("pytest")]
+    assert task.commands == [Command(["pytest"])]
 
 
 def test_task_without_config_dict(tmp_path: Path) -> None:
@@ -292,7 +292,43 @@ task.check = ["pytest", "ruff check ."]
 
     assert isinstance(task.reporter, report.CliReporter)
     assert not isinstance(task.reporter, report.ParallelCliReporter)
-    assert task.commands == [Command("pytest"), Command("ruff check .")]
+    assert task.commands == [Command(["pytest"]), Command(["ruff", "check", "."])]
+
+
+# --- shell config dict tests ---
+
+
+def test_task_config_shell(tmp_path: Path) -> None:
+    """shell=true wraps commands in bash -c."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.check = [
+    {shell = true},
+    "pytest | tee output.txt",
+]
+"""
+    )
+
+    task = config.load_task(pyproject)
+
+    assert task.commands == [Command(["bash", "-c", "pytest | tee output.txt"])]
+
+
+def test_task_without_shell(tmp_path: Path) -> None:
+    """Default (no shell) splits commands into arg lists."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.check = ["ruff check ."]
+"""
+    )
+
+    task = config.load_task(pyproject)
+
+    assert task.commands == [Command(["ruff", "check", "."])]
 
 
 # --- CLI overrides config dict tests ---
@@ -362,7 +398,7 @@ task.check = ["ruff check {src}"]
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command("ruff check src/app")]
+    assert task.commands == [Command(["ruff", "check", "src/app"])]
 
 
 def test_multiple_variables(tmp_path: Path) -> None:
@@ -379,7 +415,7 @@ task.check = ["ruff check {src} {tests}"]
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command("ruff check src tests")]
+    assert task.commands == [Command(["ruff", "check", "src", "tests"])]
 
 
 def test_unknown_variable_preserved(tmp_path: Path) -> None:
@@ -394,7 +430,7 @@ task.check = ["echo {unknown}"]
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command("echo {unknown}")]
+    assert task.commands == [Command(["echo", "{unknown}"])]
 
 
 # --- Combined config + CLI tests ---

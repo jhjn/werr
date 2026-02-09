@@ -60,15 +60,15 @@ class Process:
 class Command:
     """A command to be run as part of a task."""
 
-    command: str
+    command: list[str]
     use_dashname: bool = False
 
     @property
     def name(self) -> str:
         """The name of the task."""
-        if self.use_dashname and " " in self.command:
-            return "-".join(self.command.split(" ")[0:2])
-        return self.command.split(" ")[0]
+        if self.use_dashname and len(self.command) > 1:
+            return "-".join(self.command[0:2])
+        return self.command[0]
 
     def run(self, *, cwd: Path | None = None, live: bool = False) -> Result:
         """Run the task using `uv` in isolated mode."""
@@ -76,7 +76,7 @@ class Command:
 
     def start(self, *, cwd: Path | None = None, live: bool = False) -> Process:
         """Start the task using `uv` in isolated mode."""
-        command = ["uv", "run", "bash", "-c", self.command]
+        command = ["uv", "run", *self.command]
         log.debug("Running command: %s", shlex.join(command))
         start = time.monotonic()
         process = subprocess.Popen(

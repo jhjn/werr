@@ -1,6 +1,7 @@
 """Loading of python project config for checking."""
 
 import logging
+import shlex
 import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -80,9 +81,14 @@ class _IgnoreMissing(dict):
         return f"{{{key}}}"
 
 
-def _command_from_template(command: str, variables: dict[str, str]) -> Command:
+def _command_from_template(
+    command: str, variables: dict[str, str], *, shell: bool = False
+) -> Command:
     """Create a command from a 'foo {bar}' template."""
-    return Command(command.format_map(_IgnoreMissing(variables)))
+    resolved = command.format_map(_IgnoreMissing(variables))
+    if shell:
+        return Command(["bash", "-c", resolved])
+    return Command(shlex.split(resolved))
 
 
 def _get_tasks(
@@ -111,8 +117,10 @@ def _get_tasks(
             parallel=configdict.get("parallel", False),
         )()
 
+        shell = configdict.get("shell", False)
         first_cmds = [
-            _command_from_template(command, variables) for command in commands
+            _command_from_template(command, variables, shell=shell)
+            for command in commands
         ]
         final_cmds = []
         # Get set of commands that have more than one common name

@@ -32,7 +32,7 @@ def _make_result(cmd: Command, *, success: bool = True) -> Result:
 
 def test_run_serial_all_pass(tmp_path: Path) -> None:
     """Serial run returns True when all commands pass."""
-    cmds = [Command("cmd1"), Command("cmd2")]
+    cmds = [Command(["cmd1"]), Command(["cmd2"])]
     reporter = _mock_reporter()
 
     with patch.object(Command, "run") as mock_run:
@@ -47,7 +47,7 @@ def test_run_serial_all_pass(tmp_path: Path) -> None:
 
 def test_run_serial_one_fails(tmp_path: Path) -> None:
     """Serial run returns False when any command fails."""
-    cmds = [Command("cmd1"), Command("cmd2")]
+    cmds = [Command(["cmd1"]), Command(["cmd2"])]
     reporter = _mock_reporter()
 
     with patch.object(Command, "run") as mock_run:
@@ -62,7 +62,7 @@ def test_run_serial_one_fails(tmp_path: Path) -> None:
 
 def test_run_serial_continues_after_failure(tmp_path: Path) -> None:
     """Serial run continues executing after a failure."""
-    cmds = [Command("cmd1"), Command("cmd2"), Command("cmd3")]
+    cmds = [Command(["cmd1"]), Command(["cmd2"]), Command(["cmd3"])]
     reporter = _mock_reporter()
 
     with patch.object(Command, "run") as mock_run:
@@ -81,7 +81,7 @@ def test_run_serial_continues_after_failure(tmp_path: Path) -> None:
 
 def test_run_parallel_dispatches_to_parallel(tmp_path: Path) -> None:
     """Run dispatches to run_parallel when reporter.parallel_cmds is True."""
-    cmds = [Command("cmd1")]
+    cmds = [Command(["cmd1"])]
     reporter = _mock_reporter(parallel=True)
 
     with patch.object(task, "run_parallel", return_value=True) as mock_parallel:
@@ -95,7 +95,7 @@ def test_run_parallel_dispatches_to_parallel(tmp_path: Path) -> None:
 
 def test_filter_by_name_prefix(tmp_path: Path) -> None:
     """Name filter selects commands matching prefix."""
-    cmds = [Command("pytest tests/"), Command("ruff check")]
+    cmds = [Command(["pytest", "tests/"]), Command(["ruff", "check"])]
     reporter = _mock_reporter()
 
     with patch.object(Command, "run") as mock_run:
@@ -107,7 +107,7 @@ def test_filter_by_name_prefix(tmp_path: Path) -> None:
 
 def test_filter_no_match_raises(tmp_path: Path) -> None:
     """Name filter raises when no commands match."""
-    cmds = [Command("pytest"), Command("ruff check")]
+    cmds = [Command(["pytest"]), Command(["ruff", "check"])]
     reporter = _mock_reporter()
 
     with pytest.raises(ValueError, match="No commands match"):

@@ -219,14 +219,14 @@ task.check = [
     assert task.commands == [Command("pytest")]
 
 
-def test_task_config_reporter(tmp_path: Path) -> None:
-    """Task config dict sets reporter."""
+def test_task_config_live(tmp_path: Path) -> None:
+    """Task config dict sets live mode."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
 [tool.werr]
 task.check = [
-    {reporter = "json"},
+    {live = true},
     "pytest",
 ]
 """
@@ -234,18 +234,18 @@ task.check = [
 
     task = config.load_task(pyproject)
 
-    assert isinstance(task.reporter, report.JsonReporter)
+    assert isinstance(task.reporter, report.LiveReporter)
     assert task.commands == [Command("pytest")]
 
 
 def test_task_config_both_options(tmp_path: Path) -> None:
-    """Task config dict can set both parallel and reporter."""
+    """Task config dict can set both parallel and live."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
 [tool.werr]
 task.check = [
-    {parallel = true, reporter = "cli"},
+    {parallel = true},
     "pytest",
 ]
 """
@@ -295,16 +295,13 @@ task.check = [
     assert isinstance(task.reporter, report.ParallelCliReporter)
 
 
-def test_cli_reporter_overrides_config(tmp_path: Path) -> None:
-    """CLI reporter flag overrides task config."""
+def test_cli_reporter_overrides_default(tmp_path: Path) -> None:
+    """CLI reporter flag overrides the default reporter."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
 [tool.werr]
-task.check = [
-    {reporter = "json"},
-    "pytest",
-]
+task.check = ["pytest"]
 """
     )
 
@@ -313,24 +310,19 @@ task.check = [
     assert isinstance(task.reporter, report.XmlReporter)
 
 
-def test_cli_overrides_both_config_options(tmp_path: Path) -> None:
-    """CLI flags override both task config options."""
+def test_cli_overrides_both_options(tmp_path: Path) -> None:
+    """CLI flags override both parallel and reporter."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
 [tool.werr]
-task.check = [
-    {parallel = true, reporter = "json"},
-    "pytest",
-]
+task.check = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject, cli_parallel=False, cli_reporter="xml")
+    task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
 
-    # cli_parallel=False doesn't override config parallel=true (False is falsy)
-    # but cli_reporter="xml" does override
-    assert isinstance(task.reporter, report.XmlReporter)
+    assert isinstance(task.reporter, report.ParallelXmlReporter)
 
 
 # --- variable.* tests ---
@@ -388,21 +380,21 @@ task.check = ["echo {unknown}"]
 
 
 def test_config_with_partial_cli_override(tmp_path: Path) -> None:
-    """CLI overrides one option while config provides the other."""
+    """CLI overrides reporter while config provides parallel."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
 [tool.werr]
 task.check = [
-    {parallel = true, reporter = "json"},
+    {parallel = true},
     "pytest",
 ]
 """
     )
 
-    task = config.load_task(pyproject, cli_reporter="cli")
+    task = config.load_task(pyproject, cli_reporter="xml")
 
-    assert isinstance(task.reporter, report.ParallelCliReporter)
+    assert isinstance(task.reporter, report.ParallelXmlReporter)
 
 
 def test_multiple_tasks_different_configs(tmp_path: Path) -> None:
@@ -416,7 +408,7 @@ task.check = [
     "pytest",
 ]
 task.ci = [
-    {reporter = "xml"},
+    {live = true},
     "pytest",
 ]
 """
@@ -426,4 +418,4 @@ task.ci = [
     assert isinstance(task1.reporter, report.ParallelCliReporter)
 
     task2 = config.load_task(pyproject, cli_task="ci")
-    assert isinstance(task2.reporter, report.XmlReporter)
+    assert isinstance(task2.reporter, report.LiveReporter)

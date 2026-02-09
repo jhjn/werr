@@ -66,7 +66,7 @@ class Command:
     @property
     def name(self) -> str:
         """The name of the task."""
-        if self.use_dashname:
+        if self.use_dashname and " " in self.command:
             return "-".join(self.command.split(" ")[0:2])
         return self.command.split(" ")[0]
 

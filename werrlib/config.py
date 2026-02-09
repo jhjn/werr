@@ -118,7 +118,7 @@ def _get_tasks(
         # Get set of commands that have more than one common name
         names = [cmd.name for cmd in first_cmds]
         for cmd in first_cmds:
-            if names.count(cmd.name):
+            if names.count(cmd.name) > 1:
                 final_cmds.append(Command(cmd.command, use_dashname=True))
             else:
                 final_cmds.append(cmd)

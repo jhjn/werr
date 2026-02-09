@@ -51,9 +51,15 @@ In this example:
 * Running `werr` executes each `check` command in sequence at the project root, printing which failed and how.
 * Running `werr fix` executes each `fix` command in sequence.
 
-The tool returns a non-zero exit code if any command fails.
+All commands are run using `uv` (the only dependency of this project), andt he tool returns a non-zero exit code if any command fails.
 
-NOTE: All commands are run using `uv` (the only dependency of this project).
+### Installation
+
+The simplest method of installation is:
+
+```bash
+uv tool install werr
+```
 
 ## Command Variables
 

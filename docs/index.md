@@ -37,7 +37,7 @@ Running `werr fix` executes each `fix` command in sequence.
 
 NOTE: All commands are run using `uv` (the only dependency of this project).
 
-## Guide
+## Guides
 <!-- Guide for common user patterns -->
 
 ### Setting up a new project

@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import config, task
+from . import config, report, task
 
 log = logging.getLogger("cli")
 
@@ -62,6 +62,13 @@ def _get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
+
+    parser.add_argument(
+        "-l",
+        "--list",
+        action="store_true",
+        help="List available tasks and exit (combines with --json)",
     )
 
     parser.add_argument(
@@ -137,14 +144,29 @@ def run(argv: list[str]) -> None:
     root_logger.handlers[0].setFormatter(LogFormatter())
     log.debug("Called with arguments: %s", argv)
 
-    reporter, commands = config.load_project(
+    if args.list:
+        reporter = (
+            report.JsonReporter() if args.reporter == "json" else report.CliReporter()
+        )
+        tasks = config.load(args.project / "pyproject.toml")
+        for t in tasks:
+            reporter.emit_task(t.name, t.reporter, t.commands)
+        return
+
+    t = config.load_task(
         args.project / "pyproject.toml",
         cli_task=args.task,
         cli_reporter=args.reporter,
         cli_parallel=args.execute_parallel,
     )
 
-    success = task.run(args.project, reporter, commands, args.name)
+    if args.verbose and isinstance(t.reporter, report.ParallelCliReporter):
+        # downgrade to serial reporter if going to be printing debug output
+        reporter = report.CliReporter()
+    else:
+        reporter = t.reporter
+
+    success = task.run(args.project, reporter, t.commands, args.name)
 
     if not success:
         sys.exit(1)

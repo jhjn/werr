@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import re
+import shlex
 import textwrap
 import time
 from _colorize import ANSIColors as C  # ty: ignore[unresolved-import]
-from abc import ABC, abstractmethod
 from typing import Literal
 
 from . import cmd, xml
@@ -22,27 +22,45 @@ _TOTAL_HEAD_LEN = 25
 _HEAD_PFX = "      "
 
 ReporterName = Literal["cli", "live", "xml", "json"]
+_SERIAL_REPORTERS: dict[ReporterName, type[Reporter]] = {}
+_PARALLEL_REPORTERS: dict[ReporterName, type[Reporter]] = {}
 
 
-class Reporter(ABC):
-    """A reporter for reporting the results of a task."""
+class Reporter:
+    """A reporter for reporting the results of a task.
 
+    The base reporter prints nothing for each emission method.
+    Subclasses override methods to report each situation.
+    """
+
+    name: ReporterName
     capture_output: bool = True
     parallel_cmds: bool = False
 
-    @abstractmethod
+    def __init_subclass__(cls) -> None:
+        """Add each inheriting class to the _REPORTERS dict."""
+        if cls.parallel_cmds:
+            _PARALLEL_REPORTERS[cls.name] = cls
+        else:
+            _SERIAL_REPORTERS[cls.name] = cls
+
+    @property
+    def full_name(self) -> str:
+        """The full name of the reporter."""
+        return f"{self.name}.parallel" if self.parallel_cmds else self.name
+
+    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+        """List a task."""
+
     def emit_info(self, msg: str) -> None:
         """Print a message (for an interactive reader)."""
 
-    @abstractmethod
     def emit_start(self, cmd: cmd.Command) -> None:
         """What is printed before a command begins."""
 
-    @abstractmethod
     def emit_end(self, result: cmd.Result) -> None:
         """What is printed after a command completes."""
 
-    @abstractmethod
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """What is printed after the task has completed."""
 
@@ -50,6 +68,7 @@ class Reporter(ABC):
 class CliReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
 
+    name: ReporterName = "cli"
     start_time: float | None = None
 
     icon_wait = f"{C.YELLOW}o{C.RESET}"
@@ -62,6 +81,20 @@ class CliReporter(Reporter):
 
     def _clear_line(self) -> None:
         print("\r\033[K", end="", flush=True)
+
+    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+        """List a task."""
+        if reporter.parallel_cmds:
+            config = " (parallel)"
+        elif reporter.name == "live":
+            config = " (live)"
+        else:
+            config = ""
+
+        print(
+            f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{config}{C.RESET}\n"
+            + "\n".join(f"  {C.GREY}{shlex.join(c.command)}{C.RESET}" for c in cmds)
+        )
 
     def emit_info(self, msg: str) -> None:
         """Print to console."""
@@ -108,7 +141,7 @@ class ParallelCliReporter(CliReporter):
 
     parallel_cmds: bool = True
 
-    _commands: list[str]
+    _commands: list[list[str]]
 
     def __init__(self) -> None:
         """Initialise the parallel CLI reporter."""
@@ -143,11 +176,21 @@ class ParallelCliReporter(CliReporter):
 class JsonReporter(Reporter):
     """A reporter for reporting the results of a task in lines of JSON."""
 
-    def emit_info(self, msg: str) -> None:
-        """Print nothing."""
+    name: ReporterName = "json"
 
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Print nothing."""
+    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+        """List a task."""
+        for c in cmds:
+            print(
+                json.dumps(
+                    {
+                        "task": name,
+                        "reporter": reporter.name,
+                        "parallel": reporter.parallel_cmds,
+                        "command": shlex.join(c.command),
+                    }
+                )
+            )
 
     def emit_end(self, result: cmd.Result) -> None:
         """Emit the end of a command."""
@@ -155,16 +198,13 @@ class JsonReporter(Reporter):
             json.dumps(
                 {
                     "name": result.cmd.name,
-                    "command": result.cmd.command,
+                    "command": shlex.join(result.cmd.command),
                     "duration": result.duration,
                     "output": ansi_escape.sub("", result.output),
                     "success": result.success,
                 }
             )
         )
-
-    def emit_summary(self, results: list[cmd.Result]) -> None:
-        """Print nothing."""
 
 
 class ParallelJsonReporter(JsonReporter):
@@ -176,14 +216,7 @@ class ParallelJsonReporter(JsonReporter):
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
 
-    def emit_info(self, msg: str) -> None:
-        """Print nothing."""
-
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Print nothing."""
-
-    def emit_end(self, result: cmd.Result) -> None:
-        """Print nothing."""
+    name: ReporterName = "xml"
 
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print Junit XML summary."""
@@ -199,37 +232,15 @@ class ParallelXmlReporter(XmlReporter):
 class LiveReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
 
+    name: ReporterName = "live"
     capture_output: bool = False
 
     def emit_info(self, msg: str) -> None:
         """Print to console."""
         print(msg)
 
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Do not emit the start of a command."""
 
-    def emit_end(self, result: cmd.Result) -> None:
-        """Do not emit the result at the end of a command."""
-
-    def emit_summary(self, results: list[cmd.Result]) -> None:
-        """Do not emit the summary."""
-
-
-_SERIAL_REPORTERS = {
-    "cli": CliReporter,
-    "live": LiveReporter,
-    "xml": XmlReporter,
-    "json": JsonReporter,
-}
-_PARALLEL_REPORTERS = {
-    "cli": ParallelCliReporter,
-    "live": None,  # cannot set live _and_ parallel.
-    "xml": ParallelXmlReporter,
-    "json": ParallelJsonReporter,
-}
-
-
-def get_reporter(reporter_name: str, *, parallel: bool) -> type[Reporter]:
+def get_reporter(reporter_name: ReporterName, *, parallel: bool) -> type[Reporter]:
     """Get a reporter class for the given reporter name and mode."""
     if parallel:
         d = _PARALLEL_REPORTERS

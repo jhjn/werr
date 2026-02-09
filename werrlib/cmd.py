@@ -8,7 +8,7 @@ import shlex
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,52 +32,32 @@ class Result:
 
 
 @dataclass(frozen=True, slots=True)
-class Process:
-    """A started command."""
-
-    cmd: Command
-    process: subprocess.Popen[str]
-    start_time: float
-
-    @overload
-    def poll(self, *, block: Literal[True]) -> Result: ...
-
-    @overload
-    def poll(self, *, block: Literal[False]) -> Result | None: ...
-
-    def poll(self, *, block: bool = False) -> Result | None:
-        """Check if process finished. Return Result if done, None if still running."""
-        if block:
-            self.process.wait()
-        elif self.process.poll() is None:
-            return None
-        duration = time.monotonic() - self.start_time
-        stdout = self.process.stdout.read() if self.process.stdout else ""
-        return Result(self.cmd, self.process.returncode, duration, stdout)
-
-
-@dataclass(frozen=True, slots=True)
 class Command:
     """A command to be run as part of a task."""
 
-    command: str
+    command: list[str]
+    use_dashname: bool = False
+
+    @classmethod
+    def from_str(cls, command: str, *, use_dashname: bool = False) -> Command:
+        """Split a command string to construct a `Command`."""
+        return cls(command=shlex.split(command), use_dashname=use_dashname)
 
     @property
     def name(self) -> str:
         """The name of the task."""
-        return self.command.split(" ")[0]
+        if self.use_dashname and len(self.command) > 1:
+            return "-".join(self.command[0:2])
+        return self.command[0]
 
     def run(self, *, cwd: Path | None = None, live: bool = False) -> Result:
         """Run the task using `uv` in isolated mode."""
-        return self.start(cwd=cwd, live=live).poll(block=True)
-
-    def start(self, *, cwd: Path | None = None, live: bool = False) -> Process:
-        """Start the task using `uv` in isolated mode."""
-        command = ["uv", "run", "bash", "-c", self.command]
+        command = ["uv", "run", *self.command]
         log.debug("Running command: %s", shlex.join(command))
         start = time.monotonic()
-        process = subprocess.Popen(
+        process = subprocess.run(
             command,
+            check=False,  # returncode is checked manually
             text=True,
             stderr=None if live else subprocess.STDOUT,
             stdout=None if live else subprocess.PIPE,
@@ -85,4 +65,5 @@ class Command:
             # env is a copy but without the `VIRTUAL_ENV` variable.
             env=os.environ.copy() | {"VIRTUAL_ENV": ""},
         )
-        return Process(self, process, start)
+        duration = time.monotonic() - start
+        return Result(self, process.returncode, duration, process.stdout)

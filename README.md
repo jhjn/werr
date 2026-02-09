@@ -31,33 +31,51 @@ dependencies = [
 ]
 
 [tool.werr]
-# 'check' is the default task if `werr` is run with no arguments.
+# The first defined task is the default task if `werr` is run with no arguments.
 task.check = [
-    "black --check {project}",
-    "isort --check {project}",
-    "ruff check {project}",
-    "mypy {project}",
+    "black --check .",
+    "isort --check .",
+    "ruff check",
+    "mypy .",
     "pytest",
 ]
 task.fix = [
-    "black {project}",
-    "isort {project}",
-    "ruff fix {project}",
+    "black .",
+    "isort .",
+    "ruff check --fix",
 ]
 ```
 
-Running `werr` executes each `check` command in sequence, printing which failed and how.
-The tool returns a non-zero exit code if any command fails.
+In this example:
 
-Running `werr fix` executes each `fix` command in sequence.
+* Running `werr` executes each `check` command in sequence at the project root, printing which failed and how.
+* Running `werr fix` executes each `fix` command in sequence.
 
-NOTE: All commands are run using `uv` (the only dependency of this project).
+All commands are run using `uv` (the only dependency of this project), andt he tool returns a non-zero exit code if any command fails.
+
+### Installation
+
+The simplest method of installation is:
+
+```bash
+uv tool install werr
+```
 
 ## Command Variables
 
-The following `{...}` variables are provided by `werr` to be used in task commands:
+Variables to use in task commands can be defined under the `variable` key:
 
-- `{project}` - the absolute path to the directory containing the `pyproject.toml` file
+```toml
+[tool.werr]
+variable.packages = "werrlib/ tests/"
+task.check = [
+    "black --check {packages}",
+    ...
+]
+```
+
+- define: `variable.packages = "werrlib/ tests/"`
+- use: `ruff check {packages}`
 
 ## Structured Output
 
@@ -109,7 +127,7 @@ Define a custom task with `task.<name> = [ ... ]`
 [tool.werr]
 # ...
 task.docs = [
-    "sphinx-build -b html {project}",
+    "sphinx-build -b html .",
 ]
 ```
 

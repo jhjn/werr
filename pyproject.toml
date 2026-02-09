@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "werr"
-version = "0.3.0"
+version = "0.4.0"
 description = "A python project task runner"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -44,18 +44,18 @@ task.check = [
     "black --check {packages}",
     "ruff check {packages}",
     "ty check {packages}",
-    "pytest {project}",
+    "pytest",
 ]
 task.fix = [
     "black {packages}",
     "ruff check --fix {packages}",
 ]
 task.docs = [
-    {reporter = "live"},
+    {live = true},
     "mkdocs gh-deploy --force",
 ]
 task.demo = [
-    {reporter = "live"},
+    {live = true},
     "echo hi",
 ]
 

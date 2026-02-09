@@ -13,7 +13,7 @@ from werrlib.cmd import Command, Result
 def _make_result(name: str, *, success: bool = True, output: str = "") -> Result:
     """Create a Result for testing."""
     return Result(
-        Command(name), returncode=0 if success else 1, duration=0.5, output=output
+        Command([name]), returncode=0 if success else 1, duration=0.5, output=output
     )
 
 
@@ -58,14 +58,16 @@ def test_get_reporter_live_serial() -> None:
 
 def test_get_reporter_live_parallel_raises() -> None:
     """Live reporter cannot be used in parallel mode."""
-    with pytest.raises(ValueError, match="cannot be used in parallel"):
+    with pytest.raises(ValueError, match="Unknown reporter"):
         report.get_reporter("live", parallel=True)
 
 
 def test_get_reporter_unknown_raises() -> None:
     """Unknown reporter name raises."""
     with pytest.raises(ValueError, match="Unknown reporter"):
-        report.get_reporter("invalid", parallel=False)
+        report.get_reporter(
+            "invalid", parallel=False  # ty: ignore[invalid-argument-type]
+        )
 
 
 # --- Reporter attributes ---

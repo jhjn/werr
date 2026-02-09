@@ -3,13 +3,12 @@
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from .cmd import Command
-
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
     from . import report
-    from .cmd import Command
+    from .cmd import Command, Result
 
 
 def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
@@ -30,6 +29,27 @@ def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
     return selected
 
 
+def _serial(
+    project: Path, reporter: report.Reporter, cmds: list[Command]
+) -> Iterator[Result]:
+    """Iterate commands yielding results."""
+    for cmd in cmds:
+        reporter.emit_start(cmd)
+        yield cmd.run(cwd=project, live=not reporter.capture_output)
+
+
+def _parallel(
+    project: Path, reporter: report.Reporter, cmds: list[Command]
+) -> Iterator[Result]:
+    """Execute commands in parallel yielding results when they complete."""
+    for cmd in cmds:
+        reporter.emit_start(cmd)  # print all start messages at once
+    with ThreadPoolExecutor(max_workers=min(len(cmds), 8)) as pool:
+        yield from pool.map(
+            lambda cmd: cmd.run(cwd=project, live=not reporter.capture_output), cmds
+        )
+
+
 def run(
     project: Path,
     reporter: report.Reporter,
@@ -43,37 +63,12 @@ def run(
     # @@@ run a uv sync first?
     cmds = _filter_name(cmds, name_filter)
 
-    if reporter.parallel_cmds:
-        return run_parallel(project, reporter, cmds)
+    executor = _parallel if reporter.parallel_cmds else _serial
 
     results = []
-    for cmd in cmds:
-        reporter.emit_start(cmd)
-        result = cmd.run(cwd=project, live=not reporter.capture_output)
+    for result in executor(project, reporter, cmds):
         results.append(result)
         reporter.emit_end(result)
-
-    reporter.emit_summary(results)
-
-    return all(result.success for result in results)
-
-
-def run_parallel(project: Path, reporter: report.Reporter, cmds: list[Command]) -> bool:
-    """Run the specified task in parallel and return True if all are successful.
-
-    Live display reports results as each process completes.
-    """
-    for cmd in cmds:
-        reporter.emit_start(cmd)
-
-    results = []
-    with ThreadPoolExecutor(max_workers=min(len(cmds), 8)) as executor:
-        for result in executor.map(
-            lambda cmd: cmd.run(cwd=project, live=not reporter.capture_output), cmds
-        ):
-            results.append(result)
-            reporter.emit_end(result)
-
     reporter.emit_summary(results)
 
     return all(result.success for result in results)

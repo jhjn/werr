@@ -1,13 +1,15 @@
 """Orchestration of task execution."""
 
-import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
+
+from .cmd import Command
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from . import report
-    from .cmd import Command, Process
+    from .cmd import Command
 
 
 def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
@@ -61,21 +63,16 @@ def run_parallel(project: Path, reporter: report.Reporter, cmds: list[Command]) 
 
     Live display reports results as each process completes.
     """
-    # kick off all commands
-    running: list[Process] = []
     for cmd in cmds:
         reporter.emit_start(cmd)
-        running.append(cmd.start(cwd=project, live=not reporter.capture_output))
 
     results = []
-    while running:
-        for process in running[:]:  # use copy avoiding mid-loop mutation
-            if (result := process.poll()) is not None:
-                running.remove(process)
-                results.append(result)
-                reporter.emit_end(result)
-        if running:
-            time.sleep(0.03)
+    with ThreadPoolExecutor(max_workers=min(len(cmds), 8)) as executor:
+        for result in executor.map(
+            lambda cmd: cmd.run(cwd=project, live=not reporter.capture_output), cmds
+        ):
+            results.append(result)
+            reporter.emit_end(result)
 
     reporter.emit_summary(results)
 

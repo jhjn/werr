@@ -95,6 +95,27 @@ task.lint = ["ruff check ."]
     assert [t.name for t in tasks] == ["check", "lint"]
 
 
+def test_load_dashname_for_duplicate_command_names(tmp_path: Path) -> None:
+    """Commands sharing a base name get dash-style names; unique ones don't."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.check = ["ruff check .", "ruff format --check .", "pytest"]
+"""
+    )
+
+    tasks = config.load(pyproject)
+
+    cmds = tasks[0].commands
+    assert cmds[0] == Command("ruff check .", use_dashname=True)
+    assert cmds[0].name == "ruff-check"
+    assert cmds[1] == Command("ruff format --check .", use_dashname=True)
+    assert cmds[1].name == "ruff-format"
+    assert cmds[2] == Command("pytest", use_dashname=False)
+    assert cmds[2].name == "pytest"
+
+
 def test_load_empty_tasks(tmp_path: Path) -> None:
     """load() returns empty list when no tasks defined."""
     pyproject = tmp_path / "pyproject.toml"

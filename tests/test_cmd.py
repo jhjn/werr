@@ -9,17 +9,22 @@ from werrlib.cmd import Command, Result
 
 def test_command_name_simple() -> None:
     """Command name is first word."""
-    assert Command(["pytest"]).name == "pytest"
+    assert Command.from_str("pytest").name == "pytest"
 
 
 def test_command_name_with_args() -> None:
     """Command name extracts first word from command with args."""
-    assert Command(["ruff", "check", "src/"]).name == "ruff"
+    assert Command.from_str("ruff check src/").name == "ruff"
+
+
+def test_command_dashname() -> None:
+    """Command name handles dash-style names."""
+    assert Command.from_str("ruff check src/", use_dashname=True).name == "ruff-check"
 
 
 def test_command_name_with_path() -> None:
     """Command name handles paths."""
-    assert Command(["python", "-m", "pytest", "tests/"]).name == "python"
+    assert Command.from_str("python -m pytest tests/").name == "python"
 
 
 # --- Result tests ---

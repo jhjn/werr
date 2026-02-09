@@ -38,6 +38,11 @@ class Command:
     command: list[str]
     use_dashname: bool = False
 
+    @classmethod
+    def from_str(cls, command: str, *, use_dashname: bool = False) -> Command:
+        """Split a command string to construct a `Command`."""
+        return cls(command=shlex.split(command), use_dashname=use_dashname)
+
     @property
     def name(self) -> str:
         """The name of the task."""

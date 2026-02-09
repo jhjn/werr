@@ -1,7 +1,6 @@
 """Loading of python project config for checking."""
 
 import logging
-import shlex
 import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -88,7 +87,7 @@ def _command_from_template(
     resolved = command.format_map(_IgnoreMissing(variables))
     if shell:
         return Command(["bash", "-c", resolved])
-    return Command(shlex.split(resolved))
+    return Command.from_str(resolved)
 
 
 def _get_tasks(

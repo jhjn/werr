@@ -14,19 +14,19 @@ dependencies = [
 ]
 
 [tool.werr]
+variable.src = "src tests"
+
 # The first task is the default when `werr` is run with no arguments.
 task.check = [
     {parallel = true},  # optional config: run commands in parallel
-    "black --check {project}",
-    "isort --check {project}",
-    "ruff check {project}",
-    "mypy {project}",
+    "ruff check {src}",
+    "ruff format --check {src}",
+    "mypy {src}",
     "pytest",
 ]
 task.fix = [
-    "black {project}",
-    "isort {project}",
-    "ruff fix {project}",
+    "ruff check --fix {src}",
+    "ruff format {src}",
 ]
 ```
 
@@ -61,10 +61,12 @@ task.<name> = ["command1", "command2", ...]
 
 Define a named task as a list of commands to run. The **first task** defined is the default when running `werr` without arguments.
 
+Each command string is split into an argument list (using shell-style tokenization) and executed directly. For example, `"ruff check src"` becomes `["ruff", "check", "src"]`.
+
 ```toml
 [tool.werr]
-task.check = ["ruff check {project}", "pytest"]  # default task (first)
-task.fix = ["ruff check --fix {project}"]
+task.check = ["ruff check src", "pytest"]  # default task (first)
+task.fix = ["ruff check --fix src"]
 ```
 
 #### Task Options
@@ -84,7 +86,8 @@ Available options:
 | Option | Values | Default | Description |
 |--------|--------|---------|-------------|
 | `parallel` | `true` / `false` | `false` | Run commands in parallel |
-| `reporter` | `"cli"`, `"json"`, `"xml"` | `"cli"` | Output format |
+| `live` | `true` / `false` | `false` | Stream command output directly to the console (no results summary) |
+| `shell` | `true` / `false` | `false` | Wrap commands in `bash -c` for shell features (pipes, globbing, etc.) |
 
 Example with different configs per task:
 
@@ -92,15 +95,19 @@ Example with different configs per task:
 [tool.werr]
 task.check = [
     {parallel = true},
-    "ruff check {project}",
+    "ruff check src",
     "pytest",
 ]
 task.ci = [
-    {reporter = "xml"},
-    "pytest --junitxml=results.xml",
+    {live = true},
+    "pytest -v",
+]
+task.report = [
+    {shell = true},
+    "pytest | tee results.txt",
 ]
 task.fix = [
-    "ruff check --fix {project}",
+    "ruff check --fix src",
 ]
 ```
 
@@ -112,26 +119,34 @@ CLI arguments always override task config (e.g. `--json`, `--xml`, `-x`).
 variable.<name> = "value"
 ```
 
-Define custom variables for use in commands with `{name}` syntax. Variables can reference other variables and the built-in `{project}` variable (the absolute path to the project directory).
+Define custom variables for use in commands with `{name}` syntax.
 
 ```toml
 [tool.werr]
-variable.src = "{project}/src"
-variable.tests = "{project}/tests"
+variable.src = "src"
+variable.tests = "tests"
 task.check = ["ruff check {src}", "pytest {tests}"]
-```
-
-Variables are resolved in order, so later variables can reference earlier ones:
-
-```toml
-[tool.werr]
-variable.base = "src"
-variable.app = "{base}/myapp"
-task.check = ["ruff check {app}"]  # resolves to "ruff check src/myapp"
 ```
 
 Unknown variables are preserved as-is (not substituted).
 
 ### CLI
+
+```
+werr [options] [task]
+```
+
+| Option | Description |
+|--------|-------------|
+| `task` | Task to run (defaults to first task in config) |
+| `-v`, `--verbose` | Enable verbose logging |
+| `-l`, `--list` | List available tasks and exit (combines with `--json`) |
+| `-x`, `--execute-parallel` | Run task commands in parallel |
+| `-p`, `--project PATH` | Python project directory (defaults to cwd) |
+| `-n`, `--name NAME` | Name of command to filter by (runs single tool) |
+| `--cli` | Print results to the console (default) |
+| `--live` | Print command output to the console (no results) |
+| `--xml` | Print results as Junit XML |
+| `--json` | Print results as lines of JSON |
 
 ### Examples

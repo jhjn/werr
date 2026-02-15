@@ -11,22 +11,18 @@ if TYPE_CHECKING:
     from .cmd import Command, Result
 
 
-def _filter_name(cmds: list[Command], name_filter: str | None) -> list[Command]:
+def _filter_name(cmds: list[Command], name_filter: str) -> list[Command]:
     """Filter commands if a name filter is set."""
-    if name_filter is None:
-        return cmds
-
-    # first, attempt to match the exact name
-    selected = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
-    if not selected:
-        # if no matches, attempt to match as a prefix
-        selected = [cmd for cmd in cmds if cmd.name.startswith(name_filter)]
-    if not selected:
-        raise ValueError(
-            f"No commands match name: {name_filter}, available: "
-            + ", ".join(cmd.name for cmd in cmds)
-        )
-    return selected
+    exact = [c for c in cmds if c.name == name_filter]
+    if exact:
+        return exact
+    prefix = [c for c in cmds if c.name.startswith(name_filter)]
+    if prefix:
+        return prefix
+    raise ValueError(
+        f"No commands match name: {name_filter}, available: "
+        + ", ".join(cmd.name for cmd in cmds)
+    )
 
 
 def _serial(
@@ -61,7 +57,8 @@ def run(
     Emit results as we go.
     """
     # @@@ run a uv sync first?
-    cmds = _filter_name(cmds, name_filter)
+    if name_filter:
+        cmds = _filter_name(cmds, name_filter)
 
     executor = _parallel if reporter.parallel_cmds else _serial
 

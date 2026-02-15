@@ -9,7 +9,7 @@ import traceback
 
 from . import cli
 
-log = logging.getLogger("saturn")
+log = logging.getLogger("werr")
 
 
 def console_entry() -> None:

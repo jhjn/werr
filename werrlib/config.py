@@ -163,9 +163,7 @@ def load_task(
     if cli_task:
         configured_task = next((task for task in tasks if task.name == cli_task), None)
         if not configured_task:
-            raise ValueError(
-                f"[tool.werr] does not contain a `task.{cli_task}` list"
-            ) from None
+            raise ValueError(f"[tool.werr] does not contain a `task.{cli_task}` list")
     else:
         configured_task = tasks[0]  # select first task if none specified
 

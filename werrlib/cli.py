@@ -55,7 +55,7 @@ class LogFormatter(logging.Formatter):
 
 
 def _get_parser() -> argparse.ArgumentParser:
-    """Create a parser for the saturn CLI."""
+    """Create a parser for the werr CLI."""
     parser = argparse.ArgumentParser(
         prog="werr",
         description="A simple python project task runner",
@@ -140,8 +140,9 @@ def run(argv: list[str]) -> None:
 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-    root_logger.addHandler(logging.StreamHandler(sys.stdout))
-    root_logger.handlers[0].setFormatter(LogFormatter())
+    handler = logging.StreamHandler()
+    handler.setFormatter(LogFormatter())
+    root_logger.addHandler(handler)
     log.debug("Called with arguments: %s", argv)
 
     if args.list:

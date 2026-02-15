@@ -167,7 +167,7 @@ def load_task(
                 f"[tool.werr] does not contain a `task.{cli_task}` list"
             ) from None
     else:
-        configured_task = tasks[0]
+        configured_task = tasks[0]  # select first task if none specified
 
     reporter = report.get_reporter(
         reporter_name=cli_reporter or configured_task.reporter.name,

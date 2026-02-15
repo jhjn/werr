@@ -107,6 +107,22 @@ def test_filter_by_name_prefix(tmp_path: Path) -> None:
     assert mock_run.call_count == 1
 
 
+def test_filter_exact_match_preferred_over_prefix(tmp_path: Path) -> None:
+    """Exact name match is preferred when a prefix match also exists."""
+    cmds = [Command(["py"]), Command(["pytest", "tests/"])]
+    reporter = _mock_reporter()
+
+    with patch.object(Command, "run") as mock_run:
+        mock_run.return_value = _make_result(cmds[0])
+        task.run(tmp_path, reporter, cmds, name_filter="py")
+
+    assert mock_run.call_count == 1
+    assert reporter.emit_start.call_count == 1
+    # The exact match "py" should be selected, not "pytest"
+    started_cmd = reporter.emit_start.call_args[0][0]
+    assert started_cmd.name == "py"
+
+
 def test_filter_no_match_raises(tmp_path: Path) -> None:
     """Name filter raises when no commands match."""
     cmds = [Command(["pytest"]), Command(["ruff", "check"])]

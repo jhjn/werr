@@ -20,56 +20,35 @@ def _make_result(name: str, *, success: bool = True, output: str = "") -> Result
 # --- get_reporter tests ---
 
 
-def test_get_reporter_cli_serial() -> None:
-    """Get CLI reporter in serial mode."""
-    r = report.get_reporter("cli", parallel=False)
+def test_get_reporter_cli() -> None:
+    """Get CLI reporter."""
+    r = report.get_reporter("cli")
     assert isinstance(r, report.CliReporter)
-    assert r.parallel_cmds is False
 
 
-def test_get_reporter_cli_parallel() -> None:
-    """Get CLI reporter in parallel mode."""
-    r = report.get_reporter("cli", parallel=True)
-    assert isinstance(r, report.ParallelCliReporter)
-
-
-def test_get_reporter_json_serial() -> None:
-    """Get JSON reporter in serial mode."""
-    r = report.get_reporter("json", parallel=False)
+def test_get_reporter_json() -> None:
+    """Get JSON reporter."""
+    r = report.get_reporter("json")
     assert isinstance(r, report.JsonReporter)
-    assert r.parallel_cmds is False
 
 
-def test_get_reporter_json_parallel() -> None:
-    """Get JSON reporter in parallel mode."""
-    r = report.get_reporter("json", parallel=True)
-    assert isinstance(r, report.JsonReporter)
-    assert r.parallel_cmds is True
-
-
-def test_get_reporter_xml_serial() -> None:
-    """Get XML reporter in serial mode."""
-    r = report.get_reporter("xml", parallel=False)
+def test_get_reporter_xml() -> None:
+    """Get XML reporter."""
+    r = report.get_reporter("xml")
     assert isinstance(r, report.XmlReporter)
 
 
-def test_get_reporter_live_serial() -> None:
-    """Get live reporter in serial mode."""
-    r = report.get_reporter("live", parallel=False)
+def test_get_reporter_live() -> None:
+    """Get live reporter."""
+    r = report.get_reporter("live")
     assert isinstance(r, report.LiveReporter)
-
-
-def test_get_reporter_live_parallel_raises() -> None:
-    """Live reporter cannot be used in parallel mode."""
-    with pytest.raises(ValueError, match="cannot be used in parallel"):
-        report.get_reporter("live", parallel=True)
 
 
 def test_get_reporter_unknown_raises() -> None:
     """Unknown reporter name raises."""
     with pytest.raises(ValueError, match="Unknown reporter"):
         report.get_reporter(
-            "invalid", parallel=False  # ty: ignore[invalid-argument-type]
+            "invalid",  # ty: ignore[invalid-argument-type]
         )
 
 
@@ -79,12 +58,6 @@ def test_get_reporter_unknown_raises() -> None:
 def test_cli_reporter_captures_output() -> None:
     """CLI reporter captures output."""
     assert report.CliReporter.capture_output is True
-    assert report.CliReporter.parallel_cmds is False
-
-
-def test_parallel_cli_reporter_parallel_flag() -> None:
-    """Parallel CLI reporter has parallel_cmds=True."""
-    assert report.ParallelCliReporter.parallel_cmds is True
 
 
 def test_live_reporter_no_capture() -> None:

@@ -51,6 +51,8 @@ def run(
     reporter: report.Reporter,
     cmds: list[Command],
     name_filter: str | None = None,
+    *,
+    parallel: bool = False,
 ) -> bool:
     """Run the specified task and return True if all are successful.
 
@@ -60,7 +62,7 @@ def run(
     if name_filter:
         cmds = _filter_name(cmds, name_filter)
 
-    executor = _parallel if reporter.parallel_cmds else _serial
+    executor = _parallel if parallel else _serial
 
     results = []
     for result in executor(project, reporter, cmds):

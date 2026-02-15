@@ -14,10 +14,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _mock_reporter(*, parallel: bool = False) -> MagicMock:
+def _mock_reporter() -> MagicMock:
     """Create a mock reporter."""
     reporter = MagicMock(spec=["emit_info", "emit_start", "emit_end", "emit_summary"])
-    reporter.parallel_cmds = parallel
     reporter.capture_output = True
     return reporter
 
@@ -80,14 +79,14 @@ def test_run_serial_continues_after_failure(tmp_path: Path) -> None:
 
 
 def test_run_parallel_dispatches_to_parallel(tmp_path: Path) -> None:
-    """Run uses _parallel executor when reporter.parallel_cmds is True."""
+    """Run uses _parallel executor when parallel=True."""
     cmds = [Command(["cmd1"])]
-    reporter = _mock_reporter(parallel=True)
+    reporter = _mock_reporter()
 
     with patch.object(
         task, "_parallel", return_value=iter([_make_result(cmds[0])])
     ) as mock_parallel:
-        task.run(tmp_path, reporter, cmds)
+        task.run(tmp_path, reporter, cmds, parallel=True)
 
     mock_parallel.assert_called_once_with(tmp_path, reporter, cmds)
 

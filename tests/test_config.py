@@ -264,7 +264,8 @@ task.check = [
 
     task = config.load_task(pyproject)
 
-    assert isinstance(task.reporter, report.ParallelCliReporter)
+    assert isinstance(task.reporter, report.CliReporter)
+    assert task.parallel is True
     assert task.commands == [Command(["pytest"])]
 
 
@@ -302,7 +303,8 @@ task.check = [
 
     task = config.load_task(pyproject)
 
-    assert isinstance(task.reporter, report.ParallelCliReporter)
+    assert isinstance(task.reporter, report.CliReporter)
+    assert task.parallel is True
     assert task.commands == [Command(["pytest"])]
 
 
@@ -319,7 +321,7 @@ task.check = ["pytest", "ruff check ."]
     task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
-    assert not isinstance(task.reporter, report.ParallelCliReporter)
+    assert task.parallel is False
     assert task.commands == [Command(["pytest"]), Command(["ruff", "check", "."])]
 
 
@@ -379,7 +381,8 @@ task.check = [
 
     task = config.load_task(pyproject, cli_parallel=True)
 
-    assert isinstance(task.reporter, report.ParallelCliReporter)
+    assert isinstance(task.reporter, report.CliReporter)
+    assert task.parallel is True
 
 
 def test_cli_reporter_overrides_default(tmp_path: Path) -> None:
@@ -410,7 +413,7 @@ task.check = ["pytest"]
     task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
-    assert task.reporter.parallel_cmds is True
+    assert task.parallel is True
 
 
 # --- variable.* tests ---
@@ -483,7 +486,7 @@ task.check = [
     task = config.load_task(pyproject, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
-    assert task.reporter.parallel_cmds is True
+    assert task.parallel is True
 
 
 def test_multiple_tasks_different_configs(tmp_path: Path) -> None:
@@ -504,7 +507,8 @@ task.ci = [
     )
 
     task1 = config.load_task(pyproject)
-    assert isinstance(task1.reporter, report.ParallelCliReporter)
+    assert isinstance(task1.reporter, report.CliReporter)
+    assert task1.parallel is True
 
     task2 = config.load_task(pyproject, cli_task="ci")
     assert isinstance(task2.reporter, report.LiveReporter)

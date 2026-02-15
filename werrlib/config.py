@@ -71,6 +71,7 @@ class Task:
     name: str
     reporter: report.Reporter
     commands: list[Command]
+    parallel: bool = False
     project_name: str | None = None
 
 
@@ -123,12 +124,12 @@ def _get_tasks(
         opts, commands = _split_options(opts_and_commands)
 
         reporter_name: report.ReporterName = "live" if opts.live else "cli"
-        reporter = report.get_reporter(reporter_name, parallel=opts.parallel)
+        reporter = report.get_reporter(reporter_name)
 
         cmds = [
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
-        yield Task(name, reporter, _deduplicate_names(cmds))
+        yield Task(name, reporter, _deduplicate_names(cmds), parallel=opts.parallel)
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -167,14 +168,18 @@ def load_task(
     else:
         configured_task = tasks[0]  # select first task if none specified
 
-    reporter = report.get_reporter(
-        cli_reporter or configured_task.reporter.name,
-        parallel=cli_parallel or configured_task.reporter.parallel_cmds,
-    )
+    reporter_name = cli_reporter or configured_task.reporter.name
+    parallel = cli_parallel or configured_task.parallel
+
+    if parallel and reporter_name == "live":
+        raise ValueError("Reporter 'live' cannot be used in parallel mode")
+
+    reporter = report.get_reporter(reporter_name)
 
     return Task(
         configured_task.name,
         reporter,
         configured_task.commands,
+        parallel=parallel,
         project_name=config.get("project.name"),
     )

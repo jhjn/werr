@@ -32,14 +32,15 @@ class Reporter:
 
     name: ReporterName
     capture_output: bool = True
-    parallel_cmds: bool = False
 
-    @property
-    def full_name(self) -> str:
-        """The full name of the reporter."""
-        return f"{self.name}.parallel" if self.parallel_cmds else self.name
-
-    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+    def emit_task(
+        self,
+        name: str,
+        *,
+        parallel: bool,
+        reporter_name: ReporterName,
+        cmds: list[cmd.Command],
+    ) -> None:
         """List a task."""
 
     def emit_info(self, msg: str) -> None:
@@ -59,30 +60,51 @@ class CliReporter(Reporter):
     """A reporter for reporting the results of a task to the console."""
 
     name: ReporterName = "cli"
-    start_time: float | None = None
+    _commands: list[list[str]]
+    _start_time: float | None = None
 
     icon_wait = f"{C.YELLOW}o{C.RESET}"
     icon_pass = f"{C.GREEN}+{C.RESET}"
     icon_fail = f"{C.RED}x{C.RESET}"
 
+    def __init__(self) -> None:
+        """Initialise the interactive CLI reporter."""
+        self._commands = []
+
     def _duration(self) -> float:
-        assert self.start_time, "must have start set before duration()"
-        return time.monotonic() - self.start_time
+        assert self._start_time, "must have start set before duration()"
+        return time.monotonic() - self._start_time
+
+    def _cursor_up(self, lines: int) -> None:
+        print(f"\033[{lines}A", end="", flush=True)
+
+    def _cursor_save(self) -> None:
+        print("\0337", end="", flush=True)
+
+    def _cursor_restore(self) -> None:
+        print("\0338", end="", flush=True)
 
     def _clear_line(self) -> None:
         print("\r\033[K", end="", flush=True)
 
-    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+    def emit_task(
+        self,
+        name: str,
+        *,
+        parallel: bool,
+        reporter_name: ReporterName,
+        cmds: list[cmd.Command],
+    ) -> None:
         """List a task."""
-        if reporter.parallel_cmds:
-            config = " (parallel)"
-        elif reporter.name == "live":
-            config = " (live)"
+        if parallel:
+            suffix = " (parallel)"
+        elif reporter_name == "live":
+            suffix = " (live)"
         else:
-            config = ""
+            suffix = ""
 
         print(
-            f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{config}{C.RESET}\n"
+            f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{suffix}{C.RESET}\n"
             + "\n".join(f"  {C.GREY}{shlex.join(c.command)}{C.RESET}" for c in cmds)
         )
 
@@ -92,19 +114,24 @@ class CliReporter(Reporter):
 
     def emit_start(self, cmd: cmd.Command) -> None:
         """Emit the start of a command."""
-        if self.start_time is None:
-            self.start_time = time.monotonic()
+        if self._start_time is None:
+            self._start_time = time.monotonic()
 
-        print(f"  {self.icon_wait} {cmd.name:<20} ", end="", flush=True)
+        print(f"  {self.icon_wait} {cmd.name:<20} ", flush=True)
+        self._commands.append(cmd.command)
 
     def emit_end(self, result: cmd.Result) -> None:
         """Emit the end of a command."""
+        up_amount = len(self._commands) - self._commands.index(result.cmd.command)
+        self._cursor_save()
+        self._cursor_up(up_amount)
         self._clear_line()
         print(
             f"  {self.icon_pass if result.success else self.icon_fail} "
             f"{result.cmd.name:<20} {C.CYAN}({result.duration:.2f}s){C.RESET}",
             flush=True,
         )
+        self._cursor_restore()
 
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print the summary line explaining what the net result was."""
@@ -126,57 +153,27 @@ class CliReporter(Reporter):
                 print(textwrap.indent(result.output, _HEAD_PFX))
 
 
-class ParallelCliReporter(CliReporter):
-    """An interactive reporter with live display updating in place."""
-
-    parallel_cmds: bool = True
-
-    _commands: list[list[str]]
-
-    def __init__(self) -> None:
-        """Initialise the parallel CLI reporter."""
-        self._commands = []
-
-    def _cursor_up(self, lines: int) -> None:
-        print(f"\033[{lines}A", end="", flush=True)
-
-    def _cursor_save(self) -> None:
-        print("\0337", end="", flush=True)
-
-    def _cursor_restore(self) -> None:
-        print("\0338", end="", flush=True)
-
-    def emit_start(self, cmd: cmd.Command) -> None:
-        """Print the command with running status."""
-        if self.start_time is None:
-            self.start_time = time.monotonic()
-
-        print(f"  {C.YELLOW}o{C.RESET} {cmd.name}", flush=True)
-        self._commands.append(cmd.command)
-
-    def emit_end(self, result: cmd.Result) -> None:
-        """Move cursor back and update the command's status."""
-        up_amount = len(self._commands) - self._commands.index(result.cmd.command)
-        self._cursor_save()
-        self._cursor_up(up_amount)
-        super().emit_end(result)
-        self._cursor_restore()
-
-
 class JsonReporter(Reporter):
     """A reporter for reporting the results of a task in lines of JSON."""
 
     name: ReporterName = "json"
 
-    def emit_task(self, name: str, reporter: Reporter, cmds: list[cmd.Command]) -> None:
+    def emit_task(
+        self,
+        name: str,
+        *,
+        parallel: bool,
+        reporter_name: ReporterName,
+        cmds: list[cmd.Command],
+    ) -> None:
         """List a task."""
         for c in cmds:
             print(
                 json.dumps(
                     {
                         "task": name,
-                        "reporter": reporter.name,
-                        "parallel": reporter.parallel_cmds,
+                        "reporter": reporter_name,
+                        "parallel": parallel,
                         "command": shlex.join(c.command),
                     }
                 )
@@ -218,23 +215,19 @@ class LiveReporter(Reporter):
         print(msg)
 
 
-def get_reporter(name: ReporterName, *, parallel: bool = False) -> Reporter:
-    """Get a reporter instance for the given name and execution mode."""
+def get_reporter(name: ReporterName) -> Reporter:
+    """Get a reporter instance for the given name."""
     match name:
         case "cli":
-            reporter = ParallelCliReporter() if parallel else CliReporter()
+            return CliReporter()
         case "json":
-            reporter = JsonReporter()
+            return JsonReporter()
         case "xml":
-            reporter = XmlReporter()
+            return XmlReporter()
         case "live":
-            if parallel:
-                raise ValueError("Reporter 'live' cannot be used in parallel mode")
-            reporter = LiveReporter()
+            return LiveReporter()
         case _:
             raise ValueError(f"Unknown reporter: {name}")
-    reporter.parallel_cmds = parallel
-    return reporter
 
 
 def _plural(size: int) -> str:

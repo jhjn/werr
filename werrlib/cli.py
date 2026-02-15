@@ -151,7 +151,12 @@ def run(argv: list[str]) -> None:
         )
         tasks = config.load(args.project / "pyproject.toml")
         for t in tasks:
-            reporter.emit_task(t.name, t.reporter, t.commands)
+            reporter.emit_task(
+                t.name,
+                parallel=t.parallel,
+                reporter_name=t.reporter.name,
+                cmds=t.commands,
+            )
         return
 
     t = config.load_task(
@@ -162,13 +167,14 @@ def run(argv: list[str]) -> None:
     )
     t.reporter.emit_info(f"Project: {t.project_name} ({t.name})")
 
-    if args.verbose and isinstance(t.reporter, report.ParallelCliReporter):
-        # downgrade to serial reporter if going to be printing debug output
-        reporter = report.CliReporter()
-    else:
-        reporter = t.reporter
+    parallel = t.parallel
+    if args.verbose and parallel:
+        # downgrade to serial when printing debug output
+        parallel = False
 
-    success = task.run(args.project, reporter, t.commands, args.name)
+    success = task.run(
+        args.project, t.reporter, t.commands, args.name, parallel=parallel
+    )
 
     if not success:
         sys.exit(1)

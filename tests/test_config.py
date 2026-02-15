@@ -116,6 +116,34 @@ task.check = ["ruff check .", "ruff format --check .", "pytest"]
     assert cmds[2].name == "pytest"
 
 
+def test_load_config_names(tmp_path: Path) -> None:
+    """Commands sharing a base name get dash-style names; unique ones don't."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.foo = [
+    "ruff check",
+    "ruff",
+    "ruff format --check .",
+]
+task.bar = [
+    {shell = true},
+    "echo hi",
+    "echo bye | grep y",
+]
+"""
+    )
+
+    foo, bar = config.load(pyproject)
+
+    assert foo.commands[0].name == "ruff-check"
+    assert foo.commands[1].name == "ruff"
+    assert foo.commands[2].name == "ruff-format"
+    assert bar.commands[0].name == "echo-hi"
+    assert bar.commands[1].name == "echo-bye"
+
+
 def test_load_empty_tasks(tmp_path: Path) -> None:
     """load() returns empty list when no tasks defined."""
     pyproject = tmp_path / "pyproject.toml"
@@ -313,7 +341,9 @@ task.check = [
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["bash", "-c", "pytest | tee output.txt"])]
+    assert [c.command for c in task.commands] == [
+        ["uv", "run", "bash", "-c", "pytest | tee output.txt"]
+    ]
 
 
 def test_task_without_shell(tmp_path: Path) -> None:

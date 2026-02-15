@@ -35,24 +35,50 @@ class Result:
 class Command:
     """A command to be run as part of a task."""
 
-    command: list[str]
+    _argv: list[str] | str  # str for shell commands
     use_dashname: bool = False
+    shell: bool = False
 
     @classmethod
-    def from_str(cls, command: str, *, use_dashname: bool = False) -> Command:
+    def from_str(
+        cls, command: str, *, use_dashname: bool = False, shell: bool = False
+    ) -> Command:
         """Split a command string to construct a `Command`."""
-        return cls(command=shlex.split(command), use_dashname=use_dashname)
+        if shell:
+            argv = command
+        else:
+            argv = shlex.split(command)
+        return cls(_argv=argv, use_dashname=use_dashname, shell=shell)
+
+    @classmethod
+    def with_dashname(cls, cmd: Command) -> Command:
+        """Create a new command with the same command but with dashname enabled."""
+        return cls(_argv=cmd._argv, use_dashname=True, shell=cmd.shell)
 
     @property
     def name(self) -> str:
         """The name of the task."""
-        if self.use_dashname and len(self.command) > 1:
-            return "-".join(self.command[0:2])
-        return self.command[0]
+        if isinstance(self._argv, str):
+            argv = shlex.split(self._argv)
+        else:
+            argv = self._argv
+
+        if self.use_dashname and len(argv) > 1:
+            return "-".join(argv[0:2])
+        return argv[0]
+
+    @property
+    def command(self) -> list[str]:
+        """The constructed command to run."""
+        if self.shell:
+            assert isinstance(self._argv, str)
+            return ["uv", "run", "bash", "-c", self._argv]
+        assert isinstance(self._argv, list)
+        return ["uv", "run", *self._argv]
 
     def run(self, *, cwd: Path | None = None, live: bool = False) -> Result:
         """Run the task using `uv` in isolated mode."""
-        command = ["uv", "run", *self.command]
+        command = self.command
         log.debug("Running command: %s", shlex.join(command))
         start = time.monotonic()
         process = subprocess.run(

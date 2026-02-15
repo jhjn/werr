@@ -85,9 +85,7 @@ def _command_from_template(
 ) -> Command:
     """Create a command from a 'foo {bar}' template."""
     resolved = command.format_map(_IgnoreMissing(variables))
-    if shell:
-        return Command(["bash", "-c", resolved])
-    return Command.from_str(resolved)
+    return Command.from_str(resolved, shell=shell)
 
 
 def _get_tasks(
@@ -126,7 +124,7 @@ def _get_tasks(
         names = [cmd.name for cmd in first_cmds]
         for cmd in first_cmds:
             if names.count(cmd.name) > 1:
-                final_cmds.append(Command(cmd.command, use_dashname=True))
+                final_cmds.append(Command.with_dashname(cmd))
             else:
                 final_cmds.append(cmd)
 

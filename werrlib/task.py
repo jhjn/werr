@@ -1,6 +1,6 @@
 """Orchestration of task execution."""
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -41,9 +41,12 @@ def _parallel(
     for cmd in cmds:
         reporter.emit_start(cmd)  # print all start messages at once
     with ThreadPoolExecutor(max_workers=min(len(cmds), 8)) as pool:
-        yield from pool.map(
-            lambda cmd: cmd.run(cwd=project, live=not reporter.capture_output), cmds
+        futures = (
+            pool.submit(cmd.run, cwd=project, live=not reporter.capture_output)
+            for cmd in cmds
         )
+        for future in as_completed(futures):
+            yield future.result()
 
 
 def run(

@@ -21,8 +21,6 @@ _SUITENAME = "werr"
 _HEAD_PFX = "      "
 
 ReporterName = Literal["cli", "live", "xml", "json"]
-_SERIAL_REPORTERS: dict[ReporterName, type[Reporter]] = {}
-_PARALLEL_REPORTERS: dict[ReporterName, type[Reporter]] = {}
 
 
 class Reporter:
@@ -35,13 +33,6 @@ class Reporter:
     name: ReporterName
     capture_output: bool = True
     parallel_cmds: bool = False
-
-    def __init_subclass__(cls) -> None:
-        """Add each inheriting class to the _REPORTERS dict."""
-        if cls.parallel_cmds:
-            _PARALLEL_REPORTERS[cls.name] = cls
-        else:
-            _SERIAL_REPORTERS[cls.name] = cls
 
     @property
     def full_name(self) -> str:
@@ -206,12 +197,6 @@ class JsonReporter(Reporter):
         )
 
 
-class ParallelJsonReporter(JsonReporter):
-    """A reporter for reporting the results of a task in lines of JSON."""
-
-    parallel_cmds: bool = True
-
-
 class XmlReporter(Reporter):
     """A reporter for reporting the results of a task as Junit XML."""
 
@@ -220,12 +205,6 @@ class XmlReporter(Reporter):
     def emit_summary(self, results: list[cmd.Result]) -> None:
         """Print Junit XML summary."""
         print(_create_xml(results))
-
-
-class ParallelXmlReporter(XmlReporter):
-    """A reporter for reporting the results of a task as Junit XML."""
-
-    parallel_cmds: bool = True
 
 
 class LiveReporter(Reporter):
@@ -239,21 +218,22 @@ class LiveReporter(Reporter):
         print(msg)
 
 
-def get_reporter(reporter_name: ReporterName, *, parallel: bool) -> type[Reporter]:
-    """Get a reporter class for the given reporter name and mode."""
-    if parallel:
-        d = _PARALLEL_REPORTERS
-    else:
-        d = _SERIAL_REPORTERS
-    try:
-        reporter = d[reporter_name]
-    except KeyError:
-        raise ValueError(f"Unknown reporter: {reporter_name}") from None
-    if reporter is None:
-        raise ValueError(
-            f"Reporter '{reporter_name}' cannot be used in "
-            f"{'parallel' if parallel else 'serial'} mode"
-        )
+def get_reporter(name: ReporterName, *, parallel: bool = False) -> Reporter:
+    """Get a reporter instance for the given name and execution mode."""
+    match name:
+        case "cli":
+            reporter = ParallelCliReporter() if parallel else CliReporter()
+        case "json":
+            reporter = JsonReporter()
+        case "xml":
+            reporter = XmlReporter()
+        case "live":
+            if parallel:
+                raise ValueError("Reporter 'live' cannot be used in parallel mode")
+            reporter = LiveReporter()
+        case _:
+            raise ValueError(f"Unknown reporter: {name}")
+    reporter.parallel_cmds = parallel
     return reporter
 
 

@@ -111,7 +111,7 @@ task.fix = [
 ]
 ```
 
-CLI arguments always override task config (e.g. `--json`, `--xml`, `-x`).
+CLI arguments always override task options (e.g. `--json`, `--xml`, `-x`).
 
 #### Variables
 

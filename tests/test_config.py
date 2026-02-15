@@ -409,7 +409,8 @@ task.check = ["pytest"]
 
     task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
 
-    assert isinstance(task.reporter, report.ParallelXmlReporter)
+    assert isinstance(task.reporter, report.XmlReporter)
+    assert task.reporter.parallel_cmds is True
 
 
 # --- variable.* tests ---
@@ -481,7 +482,8 @@ task.check = [
 
     task = config.load_task(pyproject, cli_reporter="xml")
 
-    assert isinstance(task.reporter, report.ParallelXmlReporter)
+    assert isinstance(task.reporter, report.XmlReporter)
+    assert task.reporter.parallel_cmds is True
 
 
 def test_multiple_tasks_different_configs(tmp_path: Path) -> None:

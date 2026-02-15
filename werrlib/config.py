@@ -2,6 +2,7 @@
 
 import logging
 import tomllib
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -70,7 +71,16 @@ class Task:
     name: str
     reporter: report.Reporter
     commands: list[Command]
-    """Commands with variables resolved."""
+    project_name: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Options:
+    """Inline task options from the optional leading dict."""
+
+    parallel: bool = False
+    live: bool = False
+    shell: bool = False
 
 
 class _IgnoreMissing(dict):
@@ -88,6 +98,19 @@ def _command_from_template(
     return Command.from_str(resolved, shell=shell)
 
 
+def _split_options(cfg_commands: list[Any]) -> tuple[Options, list[str]]:
+    """Separate the optional leading options dict from command strings."""
+    if cfg_commands and isinstance(cfg_commands[0], dict):
+        return Options(**cfg_commands[0]), cfg_commands[1:]
+    return Options(), cfg_commands
+
+
+def _deduplicate_names(cmds: list[Command]) -> list[Command]:
+    """Use dash-names for commands that share a base name."""
+    counts = Counter(c.name for c in cmds)
+    return [Command.with_dashname(c) if counts[c.name] > 1 else c for c in cmds]
+
+
 def _get_tasks(
     taskmap: dict[str, Any] | None, variables: dict[str, str]
 ) -> Iterator[Task]:
@@ -96,39 +119,16 @@ def _get_tasks(
         log.debug("no configured tasks found")
         return
 
-    for name, cfg_commands in taskmap.items():
-        if isinstance(cfg_commands[0], dict):
-            configdict = cfg_commands[0]
-            commands = cfg_commands[1:]  # remove the configdict element
-        else:
-            configdict = {}
-            commands = cfg_commands
+    for name, opts_and_commands in taskmap.items():
+        opts, commands = _split_options(opts_and_commands)
 
-        if configdict.get("live", False):
-            reporter = "live"
-        else:
-            reporter = "cli"  # default reporter
+        reporter_name: report.ReporterName = "live" if opts.live else "cli"
+        reporter = report.get_reporter(reporter_name, parallel=opts.parallel)
 
-        reporter = report.get_reporter(
-            reporter_name=reporter,
-            parallel=configdict.get("parallel", False),
-        )()
-
-        shell = configdict.get("shell", False)
-        first_cmds = [
-            _command_from_template(command, variables, shell=shell)
-            for command in commands
+        cmds = [
+            _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
-        final_cmds = []
-        # Get set of commands that have more than one common name
-        names = [cmd.name for cmd in first_cmds]
-        for cmd in first_cmds:
-            if names.count(cmd.name) > 1:
-                final_cmds.append(Command.with_dashname(cmd))
-            else:
-                final_cmds.append(cmd)
-
-        yield Task(name, reporter, final_cmds)
+        yield Task(name, reporter, _deduplicate_names(cmds))
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -168,13 +168,13 @@ def load_task(
         configured_task = tasks[0]  # select first task if none specified
 
     reporter = report.get_reporter(
-        reporter_name=cli_reporter or configured_task.reporter.name,
+        cli_reporter or configured_task.reporter.name,
         parallel=cli_parallel or configured_task.reporter.parallel_cmds,
-    )()
-
-    # The very last thing the loader does is emit the first info line.
-    reporter.emit_info(
-        f"Project: {config.get('project.name')} ({configured_task.name})"
     )
 
-    return Task(configured_task.name, reporter, configured_task.commands)
+    return Task(
+        configured_task.name,
+        reporter,
+        configured_task.commands,
+        project_name=config.get("project.name"),
+    )

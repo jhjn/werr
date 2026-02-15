@@ -160,6 +160,7 @@ def run(argv: list[str]) -> None:
         cli_reporter=args.reporter,
         cli_parallel=args.execute_parallel,
     )
+    t.reporter.emit_info(f"Project: {t.project_name} ({t.name})")
 
     if args.verbose and isinstance(t.reporter, report.ParallelCliReporter):
         # downgrade to serial reporter if going to be printing debug output

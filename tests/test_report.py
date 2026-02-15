@@ -22,43 +22,46 @@ def _make_result(name: str, *, success: bool = True, output: str = "") -> Result
 
 def test_get_reporter_cli_serial() -> None:
     """Get CLI reporter in serial mode."""
-    cls = report.get_reporter("cli", parallel=False)
-    assert cls is report.CliReporter
+    r = report.get_reporter("cli", parallel=False)
+    assert isinstance(r, report.CliReporter)
+    assert r.parallel_cmds is False
 
 
 def test_get_reporter_cli_parallel() -> None:
     """Get CLI reporter in parallel mode."""
-    cls = report.get_reporter("cli", parallel=True)
-    assert cls is report.ParallelCliReporter
+    r = report.get_reporter("cli", parallel=True)
+    assert isinstance(r, report.ParallelCliReporter)
 
 
 def test_get_reporter_json_serial() -> None:
     """Get JSON reporter in serial mode."""
-    cls = report.get_reporter("json", parallel=False)
-    assert cls is report.JsonReporter
+    r = report.get_reporter("json", parallel=False)
+    assert isinstance(r, report.JsonReporter)
+    assert r.parallel_cmds is False
 
 
 def test_get_reporter_json_parallel() -> None:
     """Get JSON reporter in parallel mode."""
-    cls = report.get_reporter("json", parallel=True)
-    assert cls is report.ParallelJsonReporter
+    r = report.get_reporter("json", parallel=True)
+    assert isinstance(r, report.JsonReporter)
+    assert r.parallel_cmds is True
 
 
 def test_get_reporter_xml_serial() -> None:
     """Get XML reporter in serial mode."""
-    cls = report.get_reporter("xml", parallel=False)
-    assert cls is report.XmlReporter
+    r = report.get_reporter("xml", parallel=False)
+    assert isinstance(r, report.XmlReporter)
 
 
 def test_get_reporter_live_serial() -> None:
     """Get live reporter in serial mode."""
-    cls = report.get_reporter("live", parallel=False)
-    assert cls is report.LiveReporter
+    r = report.get_reporter("live", parallel=False)
+    assert isinstance(r, report.LiveReporter)
 
 
 def test_get_reporter_live_parallel_raises() -> None:
     """Live reporter cannot be used in parallel mode."""
-    with pytest.raises(ValueError, match="Unknown reporter"):
+    with pytest.raises(ValueError, match="cannot be used in parallel"):
         report.get_reporter("live", parallel=True)
 
 

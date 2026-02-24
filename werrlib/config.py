@@ -3,7 +3,7 @@
 import logging
 import tomllib
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -73,6 +73,7 @@ class Task:
     commands: list[Command]
     parallel: bool = False
     project_name: str | None = None
+    needs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +83,7 @@ class Options:
     parallel: bool = False
     live: bool = False
     shell: bool = False
+    needs: list[str] | str = field(default_factory=list)
 
 
 class _IgnoreMissing(dict):
@@ -126,10 +128,40 @@ def _get_tasks(
         reporter_name: report.ReporterName = "live" if opts.live else "cli"
         reporter = report.get_reporter(reporter_name)
 
+        needs_raw = [opts.needs] if isinstance(opts.needs, str) else opts.needs
+        needs = tuple(needs_raw)
+
         cmds = [
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
-        yield Task(name, reporter, _deduplicate_names(cmds), parallel=opts.parallel)
+        yield Task(
+            name, reporter, _deduplicate_names(cmds), parallel=opts.parallel, needs=needs
+        )
+
+
+def _validate_needs(tasks: list[Task]) -> None:
+    """Validate that all needs references exist and there are no cycles."""
+    names = {t.name for t in tasks}
+    for t in tasks:
+        for dep in t.needs:
+            if dep not in names:
+                raise ValueError(
+                    f"task `{t.name}` needs unknown task `{dep}`"
+                )
+
+    # Cycle detection via DFS
+    adj = {t.name: t.needs for t in tasks}
+
+    def _visit(name: str, path: set[str]) -> None:
+        if name in path:
+            raise ValueError(f"task dependency cycle detected: {name}")
+        path.add(name)
+        for dep in adj[name]:
+            _visit(dep, path)
+        path.discard(name)
+
+    for t in tasks:
+        _visit(t.name, set())
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -141,7 +173,9 @@ def _load(pyproject: Path) -> tuple[Config, list[Task]]:
     assert isinstance(variables, dict), err
     log.debug("Variables: %s", variables)
 
-    return config, list(_get_tasks(config.werr.get("task"), variables))
+    tasks = list(_get_tasks(config.werr.get("task"), variables))
+    _validate_needs(tasks)
+    return config, tasks
 
 
 def load(pyproject: Path) -> list[Task]:
@@ -155,8 +189,13 @@ def load_task(
     cli_task: str | None = None,
     cli_reporter: report.ReporterName | None = None,
     cli_parallel: bool | None = None,
-) -> Task:
-    """Load a single task from a pyproject.toml file."""
+) -> tuple[Task, dict[str, Task]]:
+    """Load a single task from a pyproject.toml file.
+
+    Returns the selected task and a dict of all tasks (with CLI overrides applied).
+    CLI reporter overrides apply to all tasks; CLI parallel overrides apply only
+    to the selected (leaf) task.
+    """
     config, tasks = _load(pyproject)
     if not tasks:
         raise ValueError("[tool.werr] does not contain any `task` lists")
@@ -168,15 +207,23 @@ def load_task(
     else:
         configured_task = tasks[0]  # select first task if none specified
 
-    reporter_name = cli_reporter or configured_task.reporter.name
-    parallel = configured_task.parallel if cli_parallel is None else cli_parallel
+    project_name = config.get("project.name")
 
-    reporter = report.get_reporter(reporter_name)
+    # Build all_tasks dict: CLI reporter applies to all, CLI parallel only to leaf
+    all_tasks: dict[str, Task] = {}
+    for t in tasks:
+        reporter_name = cli_reporter or t.reporter.name
+        reporter = report.get_reporter(reporter_name)
+        parallel = t.parallel
+        if t.name == configured_task.name and cli_parallel is not None:
+            parallel = cli_parallel
+        all_tasks[t.name] = Task(
+            t.name,
+            reporter,
+            t.commands,
+            parallel=parallel,
+            project_name=project_name,
+            needs=t.needs,
+        )
 
-    return Task(
-        configured_task.name,
-        reporter,
-        configured_task.commands,
-        parallel=parallel,
-        project_name=config.get("project.name"),
-    )
+    return all_tasks[configured_task.name], all_tasks

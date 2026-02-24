@@ -178,9 +178,7 @@ def _run_with_needs(
             parallel = False
 
         nf = name_filter if is_leaf else None
-        success = task.run(
-            project, t.reporter, t.commands, nf, parallel=parallel
-        )
+        success = task.run(project, t.reporter, t.commands, nf, parallel=parallel)
 
         if success:
             completed.add(t.name)

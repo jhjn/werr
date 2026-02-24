@@ -135,7 +135,11 @@ def _get_tasks(
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
         yield Task(
-            name, reporter, _deduplicate_names(cmds), parallel=opts.parallel, needs=needs
+            name,
+            reporter,
+            _deduplicate_names(cmds),
+            parallel=opts.parallel,
+            needs=needs,
         )
 
 
@@ -145,9 +149,7 @@ def _validate_needs(tasks: list[Task]) -> None:
     for t in tasks:
         for dep in t.needs:
             if dep not in names:
-                raise ValueError(
-                    f"task `{t.name}` needs unknown task `{dep}`"
-                )
+                raise ValueError(f"task `{t.name}` needs unknown task `{dep}`")
 
     # Cycle detection via DFS
     adj = {t.name: t.needs for t in tasks}

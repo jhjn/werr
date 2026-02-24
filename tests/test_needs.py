@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 from werrlib import cli, config, report
 from werrlib.cmd import Command
@@ -170,7 +170,9 @@ task.test = [
 
 def test_name_filter_only_applies_to_leaf(tmp_path: Path) -> None:
     """name_filter is only passed to the leaf task, not deps."""
-    build = _make_task("build", commands=[Command(["make"]), Command(["make", "install"])])
+    build = _make_task(
+        "build", commands=[Command(["make"]), Command(["make", "install"])]
+    )
     test = _make_task("test")
     test_with_needs = _make_task("test", needs=("build",))
     all_tasks = {"build": build, "test": test_with_needs}

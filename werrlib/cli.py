@@ -65,6 +65,14 @@ def _get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "-p",
+        "--project",
+        type=Path,
+        default=Path.cwd(),
+        help="Python project directory (defaults to cwd)",
+    )
+
+    parser.add_argument(
         "-l",
         "--list",
         action="store_true",
@@ -81,20 +89,11 @@ def _get_parser() -> argparse.ArgumentParser:
         help="Run task commands in parallel",
     )
     parallel_group.add_argument(
-        "-s",
         "--serial",
         action="store_const",
         const=False,
         dest="cli_parallel",
         help="Run task commands serially",
-    )
-
-    parser.add_argument(
-        "-p",
-        "--project",
-        type=Path,
-        default=Path.cwd(),
-        help="Python project directory (defaults to cwd)",
     )
 
     parser.add_argument(

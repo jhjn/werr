@@ -71,11 +71,22 @@ def _get_parser() -> argparse.ArgumentParser:
         help="List available tasks and exit (combines with --json)",
     )
 
-    parser.add_argument(
+    parallel_group = parser.add_mutually_exclusive_group()
+    parallel_group.add_argument(
         "-x",
         "--execute-parallel",
-        action="store_true",
+        action="store_const",
+        const=True,
+        dest="cli_parallel",
         help="Run task commands in parallel",
+    )
+    parallel_group.add_argument(
+        "-s",
+        "--serial",
+        action="store_const",
+        const=False,
+        dest="cli_parallel",
+        help="Run task commands serially",
     )
 
     parser.add_argument(
@@ -163,7 +174,7 @@ def run(argv: list[str]) -> None:
         args.project / "pyproject.toml",
         cli_task=args.task,
         cli_reporter=args.reporter,
-        cli_parallel=args.execute_parallel,
+        cli_parallel=args.cli_parallel,
     )
     t.reporter.emit_info(f"Project: {t.project_name} ({t.name})")
 

@@ -154,7 +154,7 @@ def load_task(
     *,
     cli_task: str | None = None,
     cli_reporter: report.ReporterName | None = None,
-    cli_parallel: bool = False,
+    cli_parallel: bool | None = None,
 ) -> Task:
     """Load a single task from a pyproject.toml file."""
     config, tasks = _load(pyproject)
@@ -169,10 +169,7 @@ def load_task(
         configured_task = tasks[0]  # select first task if none specified
 
     reporter_name = cli_reporter or configured_task.reporter.name
-    parallel = cli_parallel or configured_task.parallel
-
-    if parallel and reporter_name == "live":
-        raise ValueError("Reporter 'live' cannot be used in parallel mode")
+    parallel = configured_task.parallel if cli_parallel is None else cli_parallel
 
     reporter = report.get_reporter(reporter_name)
 

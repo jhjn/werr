@@ -96,11 +96,10 @@ def run_tree(
         if t.name in failed:
             return False
 
-        # Run dependencies first
-        for dep_name in t.needs:
-            if not _run_task(all_tasks[dep_name]):
-                failed.add(t.name)
-                return False
+        # Run dependency first
+        if t.needs and not _run_task(all_tasks[t.needs]):
+            failed.add(t.name)
+            return False
 
         success = run(project, t.reporter, t.commands, name_filter, parallel=t.parallel)
 

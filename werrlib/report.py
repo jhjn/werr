@@ -40,7 +40,7 @@ class Reporter:
         parallel: bool,
         reporter_name: ReporterName,
         cmds: list[cmd.Command],
-        needs: tuple[str, ...] = (),
+        needs: str = "",
     ) -> None:
         """List a task."""
 
@@ -95,7 +95,7 @@ class CliReporter(Reporter):
         parallel: bool,
         reporter_name: ReporterName,
         cmds: list[cmd.Command],
-        needs: tuple[str, ...] = (),
+        needs: str = "",
     ) -> None:
         """List a task."""
         if parallel:
@@ -106,7 +106,7 @@ class CliReporter(Reporter):
             suffix = ""
 
         if needs:
-            suffix += f" -> {C.GREEN}{', '.join(needs)}{C.RESET}"
+            suffix += f" -> {C.GREEN}{needs}{C.RESET}"
 
         print(
             f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{suffix}{C.RESET}\n"
@@ -170,7 +170,7 @@ class JsonReporter(Reporter):
         parallel: bool,
         reporter_name: ReporterName,
         cmds: list[cmd.Command],
-        needs: tuple[str, ...] = (),
+        needs: str = "",
     ) -> None:
         """List a task."""
         for c in cmds:
@@ -181,7 +181,7 @@ class JsonReporter(Reporter):
                         "reporter": reporter_name,
                         "parallel": parallel,
                         "command": shlex.join(c.command),
-                        "needs": list(needs),
+                        "needs": needs,
                     }
                 )
             )

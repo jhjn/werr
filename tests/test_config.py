@@ -517,28 +517,8 @@ task.ci = [
 # --- needs tests ---
 
 
-def test_task_config_needs_list(tmp_path: Path) -> None:
-    """{needs = ["build"]} sets task.needs == ("build",)."""
-    pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text(
-        """
-[tool.werr]
-task.build = ["make"]
-task.test = [
-    {needs = ["build"]},
-    "pytest",
-]
-"""
-    )
-
-    tasks = config.load(pyproject)
-    test_task = next(t for t in tasks if t.name == "test")
-
-    assert test_task.needs == ("build",)
-
-
 def test_task_config_needs_string(tmp_path: Path) -> None:
-    """{needs = "build"} sets task.needs == ("build",)."""
+    """{needs = "build"} sets task.needs == "build"."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -554,11 +534,11 @@ task.test = [
     tasks = config.load(pyproject)
     test_task = next(t for t in tasks if t.name == "test")
 
-    assert test_task.needs == ("build",)
+    assert test_task.needs == "build"
 
 
 def test_task_without_needs(tmp_path: Path) -> None:
-    """Tasks without needs have empty tuple."""
+    """Tasks without needs have empty string."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -569,7 +549,7 @@ task.check = ["pytest"]
 
     tasks = config.load(pyproject)
 
-    assert tasks[0].needs == ()
+    assert tasks[0].needs == ""
 
 
 def test_needs_unknown_task_raises(tmp_path: Path) -> None:
@@ -646,6 +626,6 @@ task.test = [
 
     task, all_tasks = config.load_task(pyproject, cli_task="test")
 
-    assert task.needs == ("build",)
+    assert task.needs == "build"
     assert "build" in all_tasks
     assert "test" in all_tasks

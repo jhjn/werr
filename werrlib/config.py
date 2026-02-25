@@ -3,7 +3,7 @@
 import logging
 import tomllib
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ class Task:
     commands: list[Command]
     parallel: bool = False
     project_name: str | None = None
-    needs: tuple[str, ...] = ()
+    needs: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +83,7 @@ class Options:
     parallel: bool = False
     live: bool = False
     shell: bool = False
-    needs: list[str] | str = field(default_factory=list)
+    needs: str = ""
 
 
 class _IgnoreMissing(dict):
@@ -128,9 +128,6 @@ def _get_tasks(
         reporter_name: report.ReporterName = "live" if opts.live else "cli"
         reporter = report.get_reporter(reporter_name)
 
-        needs_raw = [opts.needs] if isinstance(opts.needs, str) else opts.needs
-        needs = tuple(needs_raw)
-
         cmds = [
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
@@ -139,7 +136,7 @@ def _get_tasks(
             reporter,
             _deduplicate_names(cmds),
             parallel=opts.parallel,
-            needs=needs,
+            needs=opts.needs,
         )
 
 
@@ -147,9 +144,8 @@ def _validate_needs(tasks: list[Task]) -> None:
     """Validate that all needs references exist and there are no cycles."""
     names = {t.name for t in tasks}
     for t in tasks:
-        for dep in t.needs:
-            if dep not in names:
-                raise ValueError(f"task `{t.name}` needs unknown task `{dep}`")
+        if t.needs and t.needs not in names:
+            raise ValueError(f"task `{t.name}` needs unknown task `{t.needs}`")
 
     # Cycle detection via DFS
     adj = {t.name: t.needs for t in tasks}
@@ -158,8 +154,8 @@ def _validate_needs(tasks: list[Task]) -> None:
         if name in path:
             raise ValueError(f"task dependency cycle detected: {name}")
         path.add(name)
-        for dep in adj[name]:
-            _visit(dep, path)
+        if adj[name]:
+            _visit(adj[name], path)
         path.discard(name)
 
     for t in tasks:

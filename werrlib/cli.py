@@ -144,51 +144,6 @@ def _get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _run_with_needs(
-    project: Path,
-    target: config.Task,
-    all_tasks: dict[str, config.Task],
-    name_filter: str | None,
-    *,
-    verbose: bool = False,
-) -> bool:
-    """Run a task and its dependencies recursively.
-
-    Dependencies are run first (depth-first). Each dep uses its own parallel
-    setting. name_filter only applies to the leaf (target) task.
-    """
-    completed: set[str] = set()
-    failed: set[str] = set()
-
-    def _run_task(t: config.Task, *, is_leaf: bool) -> bool:
-        if t.name in completed:
-            return True
-        if t.name in failed:
-            return False
-
-        # Run dependencies first
-        for dep_name in t.needs:
-            dep = all_tasks[dep_name]
-            if not _run_task(dep, is_leaf=False):
-                failed.add(t.name)
-                return False
-
-        parallel = t.parallel
-        if verbose and parallel:
-            parallel = False
-
-        nf = name_filter if is_leaf else None
-        success = task.run(project, t.reporter, t.commands, nf, parallel=parallel)
-
-        if success:
-            completed.add(t.name)
-        else:
-            failed.add(t.name)
-        return success
-
-    return _run_task(target, is_leaf=True)
-
-
 def run(argv: list[str]) -> None:
     """Main entrypoint of the werr tool."""
     args = _get_parser().parse_args(argv)
@@ -222,10 +177,7 @@ def run(argv: list[str]) -> None:
         cli_parallel=args.cli_parallel,
     )
     t.reporter.emit_info(f"Project: {t.project_name} ({t.name})")
-
-    success = _run_with_needs(
-        args.project, t, all_tasks, args.name, verbose=args.verbose
-    )
+    success = task.run_tree(args.project, t, all_tasks, args.name)
 
     if not success:
         sys.exit(1)

@@ -5,11 +5,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import pytest
+
 from werrlib import config, report, task
 from werrlib.cmd import Command
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
+    from unittest.mock import MagicMock
+
+
+@pytest.fixture
+def mock_run() -> Iterator[MagicMock]:
+    """Patch task.run via patch.object, yielding the mock."""
+    with patch.object(task, "run") as m:
+        yield m
 
 
 def _make_task(
@@ -33,7 +44,7 @@ def _make_task(
 # --- Dependency ordering ---
 
 
-def test_deps_run_before_leaf(tmp_path: Path) -> None:
+def test_deps_run_before_leaf(tmp_path: Path, mock_run: MagicMock) -> None:
     """Dependencies run before the leaf task, sharing the target reporter."""
     build = _make_task("build", reporter=report.CliReporter())
     test = _make_task("test", needs=build, reporter=report.JsonReporter())
@@ -41,13 +52,16 @@ def test_deps_run_before_leaf(tmp_path: Path) -> None:
     order: list[str] = []
     reporters: list[report.Reporter] = []
 
-    def mock_run(_proj, reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
+    def _side_effect(
+        _proj: Path, reporter: report.Reporter, cmds: list[Command],
+        _nf: str | None, *, _parallel: bool = False,
+    ) -> bool:
         order.append(cmds[0].name)
         reporters.append(reporter)
         return True
 
-    with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, test)
+    mock_run.side_effect = _side_effect
+    result = task.run_tree(tmp_path, test)
 
     assert result is True
     assert order == ["build", "test"]
@@ -55,25 +69,28 @@ def test_deps_run_before_leaf(tmp_path: Path) -> None:
     assert all(isinstance(r, report.JsonReporter) for r in reporters)
 
 
-def test_dep_failure_skips_leaf(tmp_path: Path) -> None:
+def test_dep_failure_skips_leaf(tmp_path: Path, mock_run: MagicMock) -> None:
     """When a dependency fails, the leaf task is not run."""
     build = _make_task("build")
     test = _make_task("test", needs=build)
 
     names: list[str] = []
 
-    def mock_run(_proj, _reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
+    def _side_effect(
+        _proj: Path, _reporter: report.Reporter, cmds: list[Command],
+        _nf: str | None, *, _parallel: bool = False,
+    ) -> bool:
         names.append(cmds[0].name)
         return False  # build fails
 
-    with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, test)
+    mock_run.side_effect = _side_effect
+    result = task.run_tree(tmp_path, test)
 
     assert result is False
     assert names == ["build"]  # only build was attempted
 
 
-def test_transitive_deps(tmp_path: Path) -> None:
+def test_transitive_deps(tmp_path: Path, mock_run: MagicMock) -> None:
     """Transitive chain: C needs B needs A."""
     a = _make_task("a")
     b = _make_task("b", needs=a)
@@ -81,12 +98,15 @@ def test_transitive_deps(tmp_path: Path) -> None:
 
     order: list[str] = []
 
-    def mock_run(_proj, _reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
+    def _side_effect(
+        _proj: Path, _reporter: report.Reporter, cmds: list[Command],
+        _nf: str | None, *, _parallel: bool = False,
+    ) -> bool:
         order.append(cmds[0].name)
         return True
 
-    with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, c)
+    mock_run.side_effect = _side_effect
+    result = task.run_tree(tmp_path, c)
 
     assert result is True
     assert order == ["a", "b", "c"]
@@ -143,7 +163,7 @@ task.test = [
     assert t.dependency.parallel is False
 
 
-def test_name_filter_applies_to_all(tmp_path: Path) -> None:
+def test_name_filter_applies_to_all(tmp_path: Path, mock_run: MagicMock) -> None:
     """name_filter is passed through to all tasks via run_tree."""
     build = _make_task(
         "build", commands=[Command(["make"]), Command(["make", "install"])]
@@ -152,25 +172,25 @@ def test_name_filter_applies_to_all(tmp_path: Path) -> None:
 
     calls: list[tuple[str, str | None]] = []
 
-    def mock_run(_proj, _reporter, cmds, nf, *, parallel=False):  # noqa: ARG001
+    def _side_effect(
+        _proj: Path, _reporter: report.Reporter, cmds: list[Command],
+        nf: str | None, *, _parallel: bool = False,
+    ) -> bool:
         calls.append((cmds[0].name, nf))
         return True
 
-    with patch("werrlib.task.run", side_effect=mock_run):
-        task.run_tree(tmp_path, test_t, "make")
+    mock_run.side_effect = _side_effect
+    task.run_tree(tmp_path, test_t, "make")
 
     assert calls[0] == ("make", "make")
     assert calls[1] == ("test", "make")
 
 
-def test_no_deps_works(tmp_path: Path) -> None:
+def test_no_deps_works(tmp_path: Path, mock_run: MagicMock) -> None:
     """Tasks with no needs still work through run_tree."""
     check = _make_task("check")
 
-    def mock_run(_proj, _reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
-        return True
-
-    with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, check)
+    mock_run.return_value = True
+    result = task.run_tree(tmp_path, check)
 
     assert result is True

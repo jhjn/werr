@@ -106,7 +106,7 @@ class CliReporter(Reporter):
             suffix = ""
 
         if needs:
-            suffix += f" -> {', '.join(needs)}"
+            suffix += f" -> {C.GREEN}{', '.join(needs)}{C.RESET}"
 
         print(
             f"{C.BOLD_GREEN}{name}{C.RESET}{C.CYAN}{suffix}{C.RESET}\n"

@@ -53,8 +53,12 @@ def test_deps_run_before_leaf(tmp_path: Path, mock_run: MagicMock) -> None:
     reporters: list[report.Reporter] = []
 
     def _side_effect(
-        _proj: Path, reporter: report.Reporter, cmds: list[Command],
-        _nf: str | None, *, _parallel: bool = False,
+        _proj: Path,
+        reporter: report.Reporter,
+        cmds: list[Command],
+        _nf: str | None,
+        *,
+        parallel: bool = False,  # noqa: ARG001
     ) -> bool:
         order.append(cmds[0].name)
         reporters.append(reporter)
@@ -77,8 +81,12 @@ def test_dep_failure_skips_leaf(tmp_path: Path, mock_run: MagicMock) -> None:
     names: list[str] = []
 
     def _side_effect(
-        _proj: Path, _reporter: report.Reporter, cmds: list[Command],
-        _nf: str | None, *, _parallel: bool = False,
+        _proj: Path,
+        _reporter: report.Reporter,
+        cmds: list[Command],
+        _nf: str | None,
+        *,
+        parallel: bool = False,  # noqa: ARG001
     ) -> bool:
         names.append(cmds[0].name)
         return False  # build fails
@@ -99,8 +107,12 @@ def test_transitive_deps(tmp_path: Path, mock_run: MagicMock) -> None:
     order: list[str] = []
 
     def _side_effect(
-        _proj: Path, _reporter: report.Reporter, cmds: list[Command],
-        _nf: str | None, *, _parallel: bool = False,
+        _proj: Path,
+        _reporter: report.Reporter,
+        cmds: list[Command],
+        _nf: str | None,
+        *,
+        parallel: bool = False,  # noqa: ARG001
     ) -> bool:
         order.append(cmds[0].name)
         return True
@@ -173,8 +185,12 @@ def test_name_filter_applies_to_all(tmp_path: Path, mock_run: MagicMock) -> None
     calls: list[tuple[str, str | None]] = []
 
     def _side_effect(
-        _proj: Path, _reporter: report.Reporter, cmds: list[Command],
-        nf: str | None, *, _parallel: bool = False,
+        _proj: Path,
+        _reporter: report.Reporter,
+        cmds: list[Command],
+        nf: str | None,
+        *,
+        parallel: bool = False,  # noqa: ARG001
     ) -> bool:
         calls.append((cmds[0].name, nf))
         return True

@@ -3,7 +3,7 @@
 import logging
 import tomllib
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -14,6 +14,10 @@ from . import report
 from .cmd import Command
 
 log = logging.getLogger("config")
+
+# These commands are never descriptive enough _as is_.
+# They come with modes like `uv run/sync/tool` or `ruff check/format`.
+_ALWAYS_DASHNAME = {"uv", "ruff"}
 
 
 @dataclass(slots=True)
@@ -73,7 +77,13 @@ class Task:
     commands: list[Command]
     parallel: bool = False
     project_name: str | None = None
-    needs: str = ""
+    needs: Task | None = None
+
+    def from_start(self) -> Iterator[Task]:
+        """Iterate all tasks from start of dependency tree."""
+        if self.needs:
+            yield from self.needs.from_start()
+        yield self
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,13 +121,20 @@ def _split_options(cfg_commands: list[Any]) -> tuple[Options, list[str]]:
 def _deduplicate_names(cmds: list[Command]) -> list[Command]:
     """Use dash-names for commands that share a base name."""
     counts = Counter(c.name for c in cmds)
-    return [Command.with_dashname(c) if counts[c.name] > 1 else c for c in cmds]
+    return [
+        (
+            Command.with_dashname(c)
+            if counts[c.name] > 1 or c.name in _ALWAYS_DASHNAME
+            else c
+        )
+        for c in cmds
+    ]
 
 
 def _get_tasks(
     taskmap: dict[str, Any] | None, variables: dict[str, str]
-) -> Iterator[Task]:
-    """Get Task objects from the mapping of task name to list of commands."""
+) -> Iterator[tuple[Task, str]]:
+    """Get (Task, raw_needs_name) pairs from the task config map."""
     if not taskmap:
         log.debug("no configured tasks found")
         return
@@ -132,34 +149,43 @@ def _get_tasks(
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
         yield Task(
-            name,
-            reporter,
-            _deduplicate_names(cmds),
-            parallel=opts.parallel,
-            needs=opts.needs,
-        )
+            name, reporter, _deduplicate_names(cmds), parallel=opts.parallel
+        ), opts.needs
 
 
-def _validate_needs(tasks: list[Task]) -> None:
-    """Validate that all needs references exist and there are no cycles."""
-    names = {t.name for t in tasks}
-    for t in tasks:
-        if t.needs and t.needs not in names:
-            raise ValueError(f"task `{t.name}` needs unknown task `{t.needs}`")
+def _resolve_needs(raw: list[tuple[Task, str]]) -> list[Task]:
+    """Validate needs references, detect cycles, and resolve to Task objects."""
+    by_name = {t.name: t for t, _ in raw}
+    needs_map = {t.name: dep for t, dep in raw}
+
+    for name, dep in needs_map.items():
+        if dep and dep not in by_name:
+            raise ValueError(f"task `{name}` needs unknown task `{dep}`")
 
     # Cycle detection via DFS
-    adj = {t.name: t.needs for t in tasks}
-
     def _visit(name: str, path: set[str]) -> None:
         if name in path:
             raise ValueError(f"task dependency cycle detected: {name}")
         path.add(name)
-        if adj[name]:
-            _visit(adj[name], path)
+        if needs_map[name]:
+            _visit(needs_map[name], path)
         path.discard(name)
 
-    for t in tasks:
-        _visit(t.name, set())
+    for name in needs_map:
+        _visit(name, set())
+
+    # Resolve string references to Task objects
+    resolved: dict[str, Task] = {}
+
+    def _resolve(name: str) -> Task:
+        if name in resolved:
+            return resolved[name]
+        dep_name = needs_map[name]
+        dep = _resolve(dep_name) if dep_name else None
+        resolved[name] = replace(by_name[name], needs=dep)
+        return resolved[name]
+
+    return [_resolve(t.name) for t, _ in raw]
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -171,9 +197,8 @@ def _load(pyproject: Path) -> tuple[Config, list[Task]]:
     assert isinstance(variables, dict), err
     log.debug("Variables: %s", variables)
 
-    tasks = list(_get_tasks(config.werr.get("task"), variables))
-    _validate_needs(tasks)
-    return config, tasks
+    raw = list(_get_tasks(config.werr.get("task"), variables))
+    return config, _resolve_needs(raw)
 
 
 def load(pyproject: Path) -> list[Task]:
@@ -187,10 +212,9 @@ def load_task(
     cli_task: str | None = None,
     cli_reporter: report.ReporterName | None = None,
     cli_parallel: bool | None = None,
-) -> tuple[Task, dict[str, Task]]:
+) -> Task:
     """Load a single task from a pyproject.toml file.
 
-    Returns the selected task and a dict of all tasks (with CLI overrides applied).
     CLI reporter overrides apply to all tasks; CLI parallel overrides apply only
     to the selected (leaf) task.
     """
@@ -207,21 +231,24 @@ def load_task(
 
     project_name = config.get("project.name")
 
-    # Build all_tasks dict: CLI reporter applies to all, CLI parallel only to leaf
-    all_tasks: dict[str, Task] = {}
-    for t in tasks:
+    # Apply CLI overrides recursively through the needs chain
+    overridden: dict[str, Task] = {}
+
+    def _apply(t: Task) -> Task:
+        if t.name in overridden:
+            return overridden[t.name]
+        dep = _apply(t.needs) if t.needs else None
         reporter_name = cli_reporter or t.reporter.name
-        reporter = report.get_reporter(reporter_name)
         parallel = t.parallel
         if t.name == configured_task.name and cli_parallel is not None:
             parallel = cli_parallel
-        all_tasks[t.name] = Task(
-            t.name,
-            reporter,
-            t.commands,
+        overridden[t.name] = replace(
+            t,
+            reporter=report.get_reporter(reporter_name),
             parallel=parallel,
             project_name=project_name,
-            needs=t.needs,
+            needs=dep,
         )
+        return overridden[t.name]
 
-    return all_tasks[configured_task.name], all_tasks
+    return _apply(configured_task)

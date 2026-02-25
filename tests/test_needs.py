@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 def _make_task(
     name: str,
     *,
-    needs: str = "",
+    needs: config.Task | None = None,
     parallel: bool = False,
     reporter: report.Reporter | None = None,
     commands: list[Command] | None = None,
@@ -37,8 +37,7 @@ def _make_task(
 def test_deps_run_before_leaf(tmp_path: Path) -> None:
     """Dependencies run before the leaf task."""
     build = _make_task("build")
-    test = _make_task("test", needs="build")
-    all_tasks = {"build": build, "test": test}
+    test = _make_task("test", needs=build)
 
     order: list[str] = []
 
@@ -47,7 +46,7 @@ def test_deps_run_before_leaf(tmp_path: Path) -> None:
         return True
 
     with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, test, all_tasks)
+        result = task.run_tree(tmp_path, test)
 
     assert result is True
     assert order == ["build", "test"]
@@ -56,8 +55,7 @@ def test_deps_run_before_leaf(tmp_path: Path) -> None:
 def test_dep_failure_skips_leaf(tmp_path: Path) -> None:
     """When a dependency fails, the leaf task is not run."""
     build = _make_task("build")
-    test = _make_task("test", needs="build")
-    all_tasks = {"build": build, "test": test}
+    test = _make_task("test", needs=build)
 
     call_count = 0
 
@@ -67,7 +65,7 @@ def test_dep_failure_skips_leaf(tmp_path: Path) -> None:
         return False  # build fails
 
     with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, test, all_tasks)
+        result = task.run_tree(tmp_path, test)
 
     assert result is False
     assert call_count == 1  # only build was attempted
@@ -76,9 +74,8 @@ def test_dep_failure_skips_leaf(tmp_path: Path) -> None:
 def test_transitive_deps(tmp_path: Path) -> None:
     """Transitive chain: C needs B needs A."""
     a = _make_task("a")
-    b = _make_task("b", needs="a")
-    c = _make_task("c", needs="b")
-    all_tasks = {"a": a, "b": b, "c": c}
+    b = _make_task("b", needs=a)
+    c = _make_task("c", needs=b)
 
     order: list[str] = []
 
@@ -87,7 +84,7 @@ def test_transitive_deps(tmp_path: Path) -> None:
         return True
 
     with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, c, all_tasks)
+        result = task.run_tree(tmp_path, c)
 
     assert result is True
     assert order == ["a", "b", "c"]
@@ -110,10 +107,11 @@ task.test = [
 """
     )
 
-    t, all_tasks = config.load_task(pyproject, cli_task="test", cli_reporter="json")
+    t = config.load_task(pyproject, cli_task="test", cli_reporter="json")
 
     assert isinstance(t.reporter, report.JsonReporter)
-    assert isinstance(all_tasks["build"].reporter, report.JsonReporter)
+    assert t.needs is not None
+    assert isinstance(t.needs.reporter, report.JsonReporter)
 
 
 def test_cli_parallel_override_applies_to_leaf_only(tmp_path: Path) -> None:
@@ -133,10 +131,11 @@ task.test = [
 """
     )
 
-    t, all_tasks = config.load_task(pyproject, cli_task="test", cli_parallel=True)
+    t = config.load_task(pyproject, cli_task="test", cli_parallel=True)
 
     assert t.parallel is True
-    assert all_tasks["build"].parallel is False
+    assert t.needs is not None
+    assert t.needs.parallel is False
 
 
 def test_name_filter_applies_to_all(tmp_path: Path) -> None:
@@ -144,8 +143,7 @@ def test_name_filter_applies_to_all(tmp_path: Path) -> None:
     build = _make_task(
         "build", commands=[Command(["make"]), Command(["make", "install"])]
     )
-    test_t = _make_task("test", needs="build")
-    all_tasks = {"build": build, "test": test_t}
+    test_t = _make_task("test", needs=build)
 
     calls: list[tuple[str, str | None]] = []
 
@@ -154,7 +152,7 @@ def test_name_filter_applies_to_all(tmp_path: Path) -> None:
         return True
 
     with patch("werrlib.task.run", side_effect=mock_run):
-        task.run_tree(tmp_path, test_t, all_tasks, "make")
+        task.run_tree(tmp_path, test_t, "make")
 
     assert calls[0] == ("make", "make")
     assert calls[1] == ("test", "make")
@@ -163,12 +161,11 @@ def test_name_filter_applies_to_all(tmp_path: Path) -> None:
 def test_no_deps_works(tmp_path: Path) -> None:
     """Tasks with no needs still work through run_tree."""
     check = _make_task("check")
-    all_tasks = {"check": check}
 
     def mock_run(_proj, _reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
         return True
 
     with patch("werrlib.task.run", side_effect=mock_run):
-        result = task.run_tree(tmp_path, check, all_tasks)
+        result = task.run_tree(tmp_path, check)
 
     assert result is True

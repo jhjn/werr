@@ -79,34 +79,16 @@ def run(
 def run_tree(
     project: Path,
     target: Task,
-    all_tasks: dict[str, Task],
     name_filter: str | None = None,
 ) -> bool:
     """Run a task and its dependencies recursively.
 
-    Dependencies are run first (depth-first). Each dep uses its own parallel
-    setting. name_filter only applies to the leaf (target) task.
+    Dependencies share the reporter but keep their own parallelism.
     """
-    completed: set[str] = set()
-    failed: set[str] = set()
-
-    def _run_task(t: Task) -> bool:
-        if t.name in completed:
-            return True
-        if t.name in failed:
+    for dep in target.from_start():
+        success = run(
+            project, target.reporter, dep.commands, name_filter, parallel=dep.parallel
+        )
+        if not success:
             return False
-
-        # Run dependency first
-        if t.needs and not _run_task(all_tasks[t.needs]):
-            failed.add(t.name)
-            return False
-
-        success = run(project, t.reporter, t.commands, name_filter, parallel=t.parallel)
-
-        if success:
-            completed.add(t.name)
-        else:
-            failed.add(t.name)
-        return success
-
-    return _run_task(target)
+    return True

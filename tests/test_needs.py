@@ -26,7 +26,6 @@ def _make_task(
         reporter=reporter or report.CliReporter(),
         commands=commands if commands is not None else [Command([name])],
         parallel=parallel,
-        project_name="test",
         dependency=needs,
     )
 
@@ -110,7 +109,7 @@ task.test = [
 """
     )
 
-    t = config.load_task(pyproject, cli_task="test", cli_reporter="json")
+    _, t = config.load_task(pyproject, cli_task="test", cli_reporter="json")
 
     # run_tree uses target.reporter for all deps, so only the target matters
     assert isinstance(t.reporter, report.JsonReporter)
@@ -137,7 +136,7 @@ task.test = [
 """
     )
 
-    t = config.load_task(pyproject, cli_task="test", cli_parallel=True)
+    _, t = config.load_task(pyproject, cli_task="test", cli_parallel=True)
 
     assert t.parallel is True
     assert t.dependency is not None

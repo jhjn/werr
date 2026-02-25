@@ -170,7 +170,7 @@ task.check = ["ruff check .", "pytest"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.name == "check"
     assert isinstance(task.reporter, report.CliReporter)
@@ -226,7 +226,7 @@ task.test = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.name == "lint"
     assert task.commands == [Command(["ruff", "check", "."], use_dashname=True)]
@@ -243,7 +243,7 @@ task.build = ["make"]
 """
     )
 
-    task = config.load_task(pyproject, cli_task="build")
+    _, task = config.load_task(pyproject, cli_task="build")
 
     assert task.name == "build"
     assert task.commands == [Command(["make"])]
@@ -265,7 +265,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is True
@@ -285,7 +285,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.LiveReporter)
     assert task.commands == [Command(["pytest"])]
@@ -304,7 +304,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is True
@@ -321,7 +321,7 @@ task.check = ["pytest", "ruff check ."]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is False
@@ -347,7 +347,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert [c.command for c in task.commands] == [
         ["uv", "run", "bash", "-c", "pytest | tee output.txt"]
@@ -364,7 +364,7 @@ task.check = ["ruff check ."]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.commands == [Command(["ruff", "check", "."], use_dashname=True)]
 
@@ -385,7 +385,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject, cli_parallel=True)
+    _, task = config.load_task(pyproject, cli_parallel=True)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is True
@@ -401,7 +401,7 @@ task.check = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject, cli_reporter="xml")
+    _, task = config.load_task(pyproject, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
 
@@ -416,7 +416,7 @@ task.check = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
+    _, task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
     assert task.parallel is True
@@ -436,7 +436,7 @@ task.check = ["ruff check {src}"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.commands == [Command(["ruff", "check", "src/app"], use_dashname=True)]
 
@@ -453,7 +453,7 @@ task.check = ["ruff check {src} {tests}"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.commands == [
         Command(["ruff", "check", "src", "tests"], use_dashname=True)
@@ -470,7 +470,7 @@ task.check = ["echo {unknown}"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.commands == [Command(["echo", "{unknown}"])]
 
@@ -491,7 +491,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject, cli_reporter="xml")
+    _, task = config.load_task(pyproject, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
     assert task.parallel is True
@@ -514,11 +514,11 @@ task.ci = [
 """
     )
 
-    task1 = config.load_task(pyproject)
+    _, task1 = config.load_task(pyproject)
     assert isinstance(task1.reporter, report.CliReporter)
     assert task1.parallel is True
 
-    task2 = config.load_task(pyproject, cli_task="ci")
+    _, task2 = config.load_task(pyproject, cli_task="ci")
     assert isinstance(task2.reporter, report.LiveReporter)
 
 
@@ -633,7 +633,7 @@ task.test = [
 """
     )
 
-    task = config.load_task(pyproject, cli_task="test")
+    _, task = config.load_task(pyproject, cli_task="test")
 
     assert task.dependency is not None
     assert task.dependency.name == "build"

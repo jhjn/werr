@@ -174,7 +174,10 @@ task.check = ["ruff check .", "pytest"]
 
     assert task.name == "check"
     assert isinstance(task.reporter, report.CliReporter)
-    assert task.commands == [Command(["ruff", "check", "."]), Command(["pytest"])]
+    assert task.commands == [
+        Command(["ruff", "check", "."], use_dashname=True),
+        Command(["pytest"]),
+    ]
 
 
 def test_load_task_missing_werr_section(tmp_path: Path) -> None:
@@ -226,7 +229,7 @@ task.test = ["pytest"]
     task = config.load_task(pyproject)
 
     assert task.name == "lint"
-    assert task.commands == [Command(["ruff", "check", "."])]
+    assert task.commands == [Command(["ruff", "check", "."], use_dashname=True)]
 
 
 def test_cli_task_overrides_default(tmp_path: Path) -> None:
@@ -322,7 +325,10 @@ task.check = ["pytest", "ruff check ."]
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is False
-    assert task.commands == [Command(["pytest"]), Command(["ruff", "check", "."])]
+    assert task.commands == [
+        Command(["pytest"]),
+        Command(["ruff", "check", "."], use_dashname=True),
+    ]
 
 
 # --- shell config dict tests ---
@@ -360,7 +366,7 @@ task.check = ["ruff check ."]
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["ruff", "check", "."])]
+    assert task.commands == [Command(["ruff", "check", "."], use_dashname=True)]
 
 
 # --- CLI overrides config dict tests ---
@@ -432,7 +438,7 @@ task.check = ["ruff check {src}"]
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["ruff", "check", "src/app"])]
+    assert task.commands == [Command(["ruff", "check", "src/app"], use_dashname=True)]
 
 
 def test_multiple_variables(tmp_path: Path) -> None:
@@ -449,7 +455,9 @@ task.check = ["ruff check {src} {tests}"]
 
     task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["ruff", "check", "src", "tests"])]
+    assert task.commands == [
+        Command(["ruff", "check", "src", "tests"], use_dashname=True)
+    ]
 
 
 def test_unknown_variable_preserved(tmp_path: Path) -> None:
@@ -518,7 +526,7 @@ task.ci = [
 
 
 def test_task_config_needs_string(tmp_path: Path) -> None:
-    """{needs = "build"} resolves task.needs to the build Task."""
+    """{needs = "build"} resolves task.dependency to the build Task."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """

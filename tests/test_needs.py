@@ -35,14 +35,16 @@ def _make_task(
 
 
 def test_deps_run_before_leaf(tmp_path: Path) -> None:
-    """Dependencies run before the leaf task."""
-    build = _make_task("build")
-    test = _make_task("test", needs=build)
+    """Dependencies run before the leaf task, sharing the target reporter."""
+    build = _make_task("build", reporter=report.CliReporter())
+    test = _make_task("test", needs=build, reporter=report.JsonReporter())
 
     order: list[str] = []
+    reporters: list[report.Reporter] = []
 
-    def mock_run(_proj, _reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
+    def mock_run(_proj, reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
         order.append(cmds[0].name)
+        reporters.append(reporter)
         return True
 
     with patch("werrlib.task.run", side_effect=mock_run):
@@ -50,6 +52,8 @@ def test_deps_run_before_leaf(tmp_path: Path) -> None:
 
     assert result is True
     assert order == ["build", "test"]
+    # run_tree uses target.reporter for all deps
+    assert all(isinstance(r, report.JsonReporter) for r in reporters)
 
 
 def test_dep_failure_skips_leaf(tmp_path: Path) -> None:
@@ -57,18 +61,17 @@ def test_dep_failure_skips_leaf(tmp_path: Path) -> None:
     build = _make_task("build")
     test = _make_task("test", needs=build)
 
-    call_count = 0
+    names: list[str] = []
 
     def mock_run(_proj, _reporter, cmds, _nf, *, parallel=False):  # noqa: ARG001
-        nonlocal call_count
-        call_count += 1
+        names.append(cmds[0].name)
         return False  # build fails
 
     with patch("werrlib.task.run", side_effect=mock_run):
         result = task.run_tree(tmp_path, test)
 
     assert result is False
-    assert call_count == 1  # only build was attempted
+    assert names == ["build"]  # only build was attempted
 
 
 def test_transitive_deps(tmp_path: Path) -> None:
@@ -90,8 +93,8 @@ def test_transitive_deps(tmp_path: Path) -> None:
     assert order == ["a", "b", "c"]
 
 
-def test_cli_reporter_override_applies_to_all(tmp_path: Path) -> None:
-    """CLI reporter override applies to all tasks in the chain."""
+def test_cli_reporter_override_on_target(tmp_path: Path) -> None:
+    """CLI reporter override is set on the target task."""
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """
@@ -109,13 +112,16 @@ task.test = [
 
     t = config.load_task(pyproject, cli_task="test", cli_reporter="json")
 
+    # run_tree uses target.reporter for all deps, so only the target matters
     assert isinstance(t.reporter, report.JsonReporter)
-    assert t.dependency is not None
-    assert isinstance(t.dependency.reporter, report.JsonReporter)
 
 
 def test_cli_parallel_override_applies_to_leaf_only(tmp_path: Path) -> None:
-    """CLI parallel override applies only to the leaf task."""
+    """CLI parallel override applies only to the leaf task.
+
+    run_tree uses dep.parallel for each task, so verifying the data model
+    ensures the right runtime behaviour.
+    """
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
         """

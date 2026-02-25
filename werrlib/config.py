@@ -3,7 +3,7 @@
 import logging
 import tomllib
 from collections import Counter
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -76,7 +76,6 @@ class Task:
     reporter: report.Reporter
     commands: list[Command]
     parallel: bool = False
-    project_name: str | None = None
     needs: str | None = None
     dependency: Task | None = None
 
@@ -206,7 +205,7 @@ def load_task(
     cli_task: str | None = None,
     cli_reporter: report.ReporterName | None = None,
     cli_parallel: bool | None = None,
-) -> Task:
+) -> tuple[str, Task]:
     """Load a single task from a pyproject.toml file.
 
     CLI reporter overrides apply to all tasks; CLI parallel overrides apply only
@@ -217,32 +216,15 @@ def load_task(
         raise ValueError("[tool.werr] does not contain any `task` lists")
 
     if cli_task:
-        configured_task = next((task for task in tasks if task.name == cli_task), None)
-        if not configured_task:
+        chosen_task = next((task for task in tasks if task.name == cli_task), None)
+        if not chosen_task:
             raise ValueError(f"[tool.werr] does not contain a `task.{cli_task}` list")
     else:
-        configured_task = tasks[0]  # select first task if none specified
+        chosen_task = tasks[0]  # select first task if none specified
 
-    project_name = config.get("project.name")
+    if cli_reporter:
+        chosen_task.reporter = report.get_reporter(cli_reporter)
+    if cli_parallel is not None:
+        chosen_task.parallel = cli_parallel
 
-    # Apply CLI overrides recursively through the needs chain
-    overridden: dict[str, Task] = {}
-
-    def _apply(t: Task) -> Task:
-        if t.name in overridden:
-            return overridden[t.name]
-        dep = _apply(t.dependency) if t.dependency else None
-        reporter_name = cli_reporter or t.reporter.name
-        parallel = t.parallel
-        if t.name == configured_task.name and cli_parallel is not None:
-            parallel = cli_parallel
-        overridden[t.name] = replace(
-            t,
-            reporter=report.get_reporter(reporter_name),
-            parallel=parallel,
-            project_name=project_name,
-            needs=dep,
-        )
-        return overridden[t.name]
-
-    return _apply(configured_task)
+    return config.get("project.name") or "unknown", chosen_task

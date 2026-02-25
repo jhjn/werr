@@ -27,7 +27,7 @@ def _make_task(
         commands=commands if commands is not None else [Command([name])],
         parallel=parallel,
         project_name="test",
-        needs=needs,
+        dependency=needs,
     )
 
 
@@ -110,8 +110,8 @@ task.test = [
     t = config.load_task(pyproject, cli_task="test", cli_reporter="json")
 
     assert isinstance(t.reporter, report.JsonReporter)
-    assert t.needs is not None
-    assert isinstance(t.needs.reporter, report.JsonReporter)
+    assert t.dependency is not None
+    assert isinstance(t.dependency.reporter, report.JsonReporter)
 
 
 def test_cli_parallel_override_applies_to_leaf_only(tmp_path: Path) -> None:
@@ -134,8 +134,8 @@ task.test = [
     t = config.load_task(pyproject, cli_task="test", cli_parallel=True)
 
     assert t.parallel is True
-    assert t.needs is not None
-    assert t.needs.parallel is False
+    assert t.dependency is not None
+    assert t.dependency.parallel is False
 
 
 def test_name_filter_applies_to_all(tmp_path: Path) -> None:

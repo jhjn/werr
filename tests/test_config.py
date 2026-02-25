@@ -534,8 +534,8 @@ task.test = [
     tasks = config.load(pyproject)
     test_task = next(t for t in tasks if t.name == "test")
 
-    assert test_task.needs is not None
-    assert test_task.needs.name == "build"
+    assert test_task.dependency is not None
+    assert test_task.dependency.name == "build"
 
 
 def test_task_without_needs(tmp_path: Path) -> None:
@@ -550,7 +550,7 @@ task.check = ["pytest"]
 
     tasks = config.load(pyproject)
 
-    assert tasks[0].needs is None
+    assert tasks[0].dependency is None
 
 
 def test_needs_unknown_task_raises(tmp_path: Path) -> None:
@@ -627,5 +627,5 @@ task.test = [
 
     task = config.load_task(pyproject, cli_task="test")
 
-    assert task.needs is not None
-    assert task.needs.name == "build"
+    assert task.dependency is not None
+    assert task.dependency.name == "build"

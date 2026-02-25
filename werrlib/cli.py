@@ -166,7 +166,7 @@ def run(argv: list[str]) -> None:
                 parallel=t.parallel,
                 reporter_name=t.reporter.name,
                 cmds=t.commands,
-                needs=t.needs.name if t.needs else "",
+                needs=t.dependency.name if t.dependency else "",
             )
         return
 

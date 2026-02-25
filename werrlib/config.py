@@ -68,7 +68,7 @@ class Config:
         return self._werr_cache
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Task:
     """A configured task."""
 
@@ -77,12 +77,13 @@ class Task:
     commands: list[Command]
     parallel: bool = False
     project_name: str | None = None
-    needs: Task | None = None
+    needs: str | None = None
+    dependency: Task | None = None
 
     def from_start(self) -> Iterator[Task]:
         """Iterate all tasks from start of dependency tree."""
-        if self.needs:
-            yield from self.needs.from_start()
+        if self.dependency:
+            yield from self.dependency.from_start()
         yield self
 
 
@@ -93,7 +94,7 @@ class Options:
     parallel: bool = False
     live: bool = False
     shell: bool = False
-    needs: str = ""
+    needs: str | None = None
 
 
 class _IgnoreMissing(dict):
@@ -133,7 +134,7 @@ def _deduplicate_names(cmds: list[Command]) -> list[Command]:
 
 def _get_tasks(
     taskmap: dict[str, Any] | None, variables: dict[str, str]
-) -> Iterator[tuple[Task, str]]:
+) -> Iterator[Task]:
     """Get (Task, raw_needs_name) pairs from the task config map."""
     if not taskmap:
         log.debug("no configured tasks found")
@@ -149,43 +150,35 @@ def _get_tasks(
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
         yield Task(
-            name, reporter, _deduplicate_names(cmds), parallel=opts.parallel
-        ), opts.needs
+            name,
+            reporter,
+            _deduplicate_names(cmds),
+            parallel=opts.parallel,
+            needs=opts.needs,
+        )
 
 
-def _resolve_needs(raw: list[tuple[Task, str]]) -> list[Task]:
+def _resolve_needs(tasks: dict[str, Task]) -> list[Task]:
     """Validate needs references, detect cycles, and resolve to Task objects."""
-    by_name = {t.name: t for t, _ in raw}
-    needs_map = {t.name: dep for t, dep in raw}
 
-    for name, dep in needs_map.items():
-        if dep and dep not in by_name:
-            raise ValueError(f"task `{name}` needs unknown task `{dep}`")
-
-    # Cycle detection via DFS
-    def _visit(name: str, path: set[str]) -> None:
+    def _visit(name: str | None, path: set[str]) -> None:
+        """Detect cycles depth first."""
+        if not name:
+            return  # nothing to visit
         if name in path:
             raise ValueError(f"task dependency cycle detected: {name}")
         path.add(name)
-        if needs_map[name]:
-            _visit(needs_map[name], path)
+        _visit(tasks[name].needs, path)
         path.discard(name)
 
-    for name in needs_map:
-        _visit(name, set())
-
-    # Resolve string references to Task objects
-    resolved: dict[str, Task] = {}
-
-    def _resolve(name: str) -> Task:
-        if name in resolved:
-            return resolved[name]
-        dep_name = needs_map[name]
-        dep = _resolve(dep_name) if dep_name else None
-        resolved[name] = replace(by_name[name], needs=dep)
-        return resolved[name]
-
-    return [_resolve(t.name) for t, _ in raw]
+    for task in tasks.values():
+        if not task.needs:
+            continue
+        if task.needs not in tasks:
+            raise ValueError(f"task `{task.name}` needs unknown task `{task.needs}`")
+        _visit(task.name, set())
+        task.dependency = tasks[task.needs]
+    return list(tasks.values())
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -197,8 +190,9 @@ def _load(pyproject: Path) -> tuple[Config, list[Task]]:
     assert isinstance(variables, dict), err
     log.debug("Variables: %s", variables)
 
-    raw = list(_get_tasks(config.werr.get("task"), variables))
-    return config, _resolve_needs(raw)
+    return config, _resolve_needs(
+        {t.name: t for t in _get_tasks(config.werr.get("task"), variables)}
+    )
 
 
 def load(pyproject: Path) -> list[Task]:
@@ -237,7 +231,7 @@ def load_task(
     def _apply(t: Task) -> Task:
         if t.name in overridden:
             return overridden[t.name]
-        dep = _apply(t.needs) if t.needs else None
+        dep = _apply(t.dependency) if t.dependency else None
         reporter_name = cli_reporter or t.reporter.name
         parallel = t.parallel
         if t.name == configured_task.name and cli_parallel is not None:

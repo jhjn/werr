@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
     from . import report
     from .cmd import Command, Result
+    from .config import Task
 
 
 def _filter_name(cmds: list[Command], name_filter: str) -> list[Command]:
@@ -61,7 +62,6 @@ def run(
 
     Emit results as we go.
     """
-    # @@@ run a uv sync first?
     if name_filter:
         cmds = _filter_name(cmds, name_filter)
 
@@ -74,3 +74,21 @@ def run(
     reporter.emit_summary(results)
 
     return all(result.success for result in results)
+
+
+def run_tree(
+    project: Path,
+    target: Task,
+    name_filter: str | None = None,
+) -> bool:
+    """Run a task and its dependencies recursively.
+
+    Dependencies share the reporter but keep their own parallelism.
+    """
+    for dep in target.from_start():
+        success = run(
+            project, target.reporter, dep.commands, name_filter, parallel=dep.parallel
+        )
+        if not success:
+            return False
+    return True

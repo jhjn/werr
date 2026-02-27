@@ -166,25 +166,20 @@ def run(argv: list[str]) -> None:
                 parallel=t.parallel,
                 reporter_name=t.reporter.name,
                 cmds=t.commands,
+                needs=t.dependency.name if t.dependency else "",
             )
         return
 
-    t = config.load_task(
+    project_name, t = config.load_task(
         args.project / "pyproject.toml",
         cli_task=args.task,
         cli_reporter=args.reporter,
         cli_parallel=args.cli_parallel,
     )
-    t.reporter.emit_info(f"Project: {t.project_name} ({t.name})")
-
-    parallel = t.parallel
-    if args.verbose and parallel:
-        # downgrade to serial when printing debug output
-        parallel = False
-
-    success = task.run(
-        args.project, t.reporter, t.commands, args.name, parallel=parallel
+    t.reporter.emit_info(
+        f"Project: {project_name} ({"->".join(t.name for t in t.from_start())})"
     )
+    success = task.run_tree(args.project, t, args.name)
 
     if not success:
         sys.exit(1)

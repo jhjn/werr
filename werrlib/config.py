@@ -15,6 +15,10 @@ from .cmd import Command
 
 log = logging.getLogger("config")
 
+# These commands are never descriptive enough _as is_.
+# They come with modes like `uv run/sync/tool` or `ruff check/format`.
+_ALWAYS_DASHNAME = {"uv", "ruff"}
+
 
 @dataclass(slots=True)
 class Config:
@@ -64,7 +68,7 @@ class Config:
         return self._werr_cache
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Task:
     """A configured task."""
 
@@ -72,7 +76,14 @@ class Task:
     reporter: report.Reporter
     commands: list[Command]
     parallel: bool = False
-    project_name: str | None = None
+    needs: str | None = None
+    dependency: Task | None = None
+
+    def from_start(self) -> Iterator[Task]:
+        """Iterate all tasks from start of dependency tree."""
+        if self.dependency:
+            yield from self.dependency.from_start()
+        yield self
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +93,7 @@ class Options:
     parallel: bool = False
     live: bool = False
     shell: bool = False
+    needs: str | None = None
 
 
 class _IgnoreMissing(dict):
@@ -109,13 +121,20 @@ def _split_options(cfg_commands: list[Any]) -> tuple[Options, list[str]]:
 def _deduplicate_names(cmds: list[Command]) -> list[Command]:
     """Use dash-names for commands that share a base name."""
     counts = Counter(c.name for c in cmds)
-    return [Command.with_dashname(c) if counts[c.name] > 1 else c for c in cmds]
+    return [
+        (
+            Command.with_dashname(c)
+            if counts[c.name] > 1 or c.name in _ALWAYS_DASHNAME
+            else c
+        )
+        for c in cmds
+    ]
 
 
 def _get_tasks(
     taskmap: dict[str, Any] | None, variables: dict[str, str]
 ) -> Iterator[Task]:
-    """Get Task objects from the mapping of task name to list of commands."""
+    """Get (Task, raw_needs_name) pairs from the task config map."""
     if not taskmap:
         log.debug("no configured tasks found")
         return
@@ -129,7 +148,36 @@ def _get_tasks(
         cmds = [
             _command_from_template(c, variables, shell=opts.shell) for c in commands
         ]
-        yield Task(name, reporter, _deduplicate_names(cmds), parallel=opts.parallel)
+        yield Task(
+            name,
+            reporter,
+            _deduplicate_names(cmds),
+            parallel=opts.parallel,
+            needs=opts.needs,
+        )
+
+
+def _resolve_needs(tasks: dict[str, Task]) -> list[Task]:
+    """Validate needs references, detect cycles, and resolve to Task objects."""
+
+    def _visit(name: str | None, path: set[str]) -> None:
+        """Detect cycles depth first."""
+        if not name:
+            return  # nothing to visit
+        if name in path:
+            raise ValueError(f"task dependency cycle detected: {name}")
+        path.add(name)
+        _visit(tasks[name].needs, path)
+        path.discard(name)
+
+    for task in tasks.values():
+        if not task.needs:
+            continue
+        if task.needs not in tasks:
+            raise ValueError(f"task `{task.name}` needs unknown task `{task.needs}`")
+        _visit(task.name, set())
+        task.dependency = tasks[task.needs]
+    return list(tasks.values())
 
 
 def _load(pyproject: Path) -> tuple[Config, list[Task]]:
@@ -141,7 +189,9 @@ def _load(pyproject: Path) -> tuple[Config, list[Task]]:
     assert isinstance(variables, dict), err
     log.debug("Variables: %s", variables)
 
-    return config, list(_get_tasks(config.werr.get("task"), variables))
+    return config, _resolve_needs(
+        {t.name: t for t in _get_tasks(config.werr.get("task"), variables)}
+    )
 
 
 def load(pyproject: Path) -> list[Task]:
@@ -155,28 +205,26 @@ def load_task(
     cli_task: str | None = None,
     cli_reporter: report.ReporterName | None = None,
     cli_parallel: bool | None = None,
-) -> Task:
-    """Load a single task from a pyproject.toml file."""
+) -> tuple[str, Task]:
+    """Load a single task from a pyproject.toml file.
+
+    CLI reporter overrides apply to all tasks; CLI parallel overrides apply only
+    to the selected (leaf) task.
+    """
     config, tasks = _load(pyproject)
     if not tasks:
         raise ValueError("[tool.werr] does not contain any `task` lists")
 
     if cli_task:
-        configured_task = next((task for task in tasks if task.name == cli_task), None)
-        if not configured_task:
+        chosen_task = next((task for task in tasks if task.name == cli_task), None)
+        if not chosen_task:
             raise ValueError(f"[tool.werr] does not contain a `task.{cli_task}` list")
     else:
-        configured_task = tasks[0]  # select first task if none specified
+        chosen_task = tasks[0]  # select first task if none specified
 
-    reporter_name = cli_reporter or configured_task.reporter.name
-    parallel = configured_task.parallel if cli_parallel is None else cli_parallel
+    if cli_reporter:
+        chosen_task.reporter = report.get_reporter(cli_reporter)
+    if cli_parallel is not None:
+        chosen_task.parallel = cli_parallel
 
-    reporter = report.get_reporter(reporter_name)
-
-    return Task(
-        configured_task.name,
-        reporter,
-        configured_task.commands,
-        parallel=parallel,
-        project_name=config.get("project.name"),
-    )
+    return config.get("project.name") or "unknown", chosen_task

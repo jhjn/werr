@@ -170,11 +170,14 @@ task.check = ["ruff check .", "pytest"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.name == "check"
     assert isinstance(task.reporter, report.CliReporter)
-    assert task.commands == [Command(["ruff", "check", "."]), Command(["pytest"])]
+    assert task.commands == [
+        Command(["ruff", "check", "."], use_dashname=True),
+        Command(["pytest"]),
+    ]
 
 
 def test_load_task_missing_werr_section(tmp_path: Path) -> None:
@@ -223,10 +226,10 @@ task.test = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.name == "lint"
-    assert task.commands == [Command(["ruff", "check", "."])]
+    assert task.commands == [Command(["ruff", "check", "."], use_dashname=True)]
 
 
 def test_cli_task_overrides_default(tmp_path: Path) -> None:
@@ -240,7 +243,7 @@ task.build = ["make"]
 """
     )
 
-    task = config.load_task(pyproject, cli_task="build")
+    _, task = config.load_task(pyproject, cli_task="build")
 
     assert task.name == "build"
     assert task.commands == [Command(["make"])]
@@ -262,7 +265,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is True
@@ -282,7 +285,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.LiveReporter)
     assert task.commands == [Command(["pytest"])]
@@ -301,7 +304,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is True
@@ -318,11 +321,14 @@ task.check = ["pytest", "ruff check ."]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is False
-    assert task.commands == [Command(["pytest"]), Command(["ruff", "check", "."])]
+    assert task.commands == [
+        Command(["pytest"]),
+        Command(["ruff", "check", "."], use_dashname=True),
+    ]
 
 
 # --- shell config dict tests ---
@@ -341,7 +347,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert [c.command for c in task.commands] == [
         ["uv", "run", "bash", "-c", "pytest | tee output.txt"]
@@ -358,9 +364,9 @@ task.check = ["ruff check ."]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["ruff", "check", "."])]
+    assert task.commands == [Command(["ruff", "check", "."], use_dashname=True)]
 
 
 # --- CLI overrides config dict tests ---
@@ -379,7 +385,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject, cli_parallel=True)
+    _, task = config.load_task(pyproject, cli_parallel=True)
 
     assert isinstance(task.reporter, report.CliReporter)
     assert task.parallel is True
@@ -395,7 +401,7 @@ task.check = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject, cli_reporter="xml")
+    _, task = config.load_task(pyproject, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
 
@@ -410,7 +416,7 @@ task.check = ["pytest"]
 """
     )
 
-    task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
+    _, task = config.load_task(pyproject, cli_parallel=True, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
     assert task.parallel is True
@@ -430,9 +436,9 @@ task.check = ["ruff check {src}"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["ruff", "check", "src/app"])]
+    assert task.commands == [Command(["ruff", "check", "src/app"], use_dashname=True)]
 
 
 def test_multiple_variables(tmp_path: Path) -> None:
@@ -447,9 +453,11 @@ task.check = ["ruff check {src} {tests}"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
-    assert task.commands == [Command(["ruff", "check", "src", "tests"])]
+    assert task.commands == [
+        Command(["ruff", "check", "src", "tests"], use_dashname=True)
+    ]
 
 
 def test_unknown_variable_preserved(tmp_path: Path) -> None:
@@ -462,7 +470,7 @@ task.check = ["echo {unknown}"]
 """
     )
 
-    task = config.load_task(pyproject)
+    _, task = config.load_task(pyproject)
 
     assert task.commands == [Command(["echo", "{unknown}"])]
 
@@ -483,7 +491,7 @@ task.check = [
 """
     )
 
-    task = config.load_task(pyproject, cli_reporter="xml")
+    _, task = config.load_task(pyproject, cli_reporter="xml")
 
     assert isinstance(task.reporter, report.XmlReporter)
     assert task.parallel is True
@@ -506,9 +514,126 @@ task.ci = [
 """
     )
 
-    task1 = config.load_task(pyproject)
+    _, task1 = config.load_task(pyproject)
     assert isinstance(task1.reporter, report.CliReporter)
     assert task1.parallel is True
 
-    task2 = config.load_task(pyproject, cli_task="ci")
+    _, task2 = config.load_task(pyproject, cli_task="ci")
     assert isinstance(task2.reporter, report.LiveReporter)
+
+
+# --- needs tests ---
+
+
+def test_task_config_needs_string(tmp_path: Path) -> None:
+    """{needs = "build"} resolves task.dependency to the build Task."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.build = ["make"]
+task.test = [
+    {needs = "build"},
+    "pytest",
+]
+"""
+    )
+
+    tasks = config.load(pyproject)
+    test_task = next(t for t in tasks if t.name == "test")
+
+    assert test_task.dependency is not None
+    assert test_task.dependency.name == "build"
+
+
+def test_task_without_needs(tmp_path: Path) -> None:
+    """Tasks without needs have None."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.check = ["pytest"]
+"""
+    )
+
+    tasks = config.load(pyproject)
+
+    assert tasks[0].dependency is None
+
+
+def test_needs_unknown_task_raises(tmp_path: Path) -> None:
+    """Referencing a non-existent task in needs raises."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.test = [
+    {needs = "nonexistent"},
+    "pytest",
+]
+"""
+    )
+
+    with pytest.raises(ValueError, match=r"needs unknown task `nonexistent`"):
+        config.load(pyproject)
+
+
+def test_needs_cycle_raises(tmp_path: Path) -> None:
+    """A needs B, B needs A raises."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.a = [
+    {needs = "b"},
+    "echo a",
+]
+task.b = [
+    {needs = "a"},
+    "echo b",
+]
+"""
+    )
+
+    with pytest.raises(ValueError, match=r"cycle"):
+        config.load(pyproject)
+
+
+def test_needs_self_cycle_raises(tmp_path: Path) -> None:
+    """A needs A raises."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.werr]
+task.a = [
+    {needs = "a"},
+    "echo a",
+]
+"""
+    )
+
+    with pytest.raises(ValueError, match=r"cycle"):
+        config.load(pyproject)
+
+
+def test_load_task_preserves_needs(tmp_path: Path) -> None:
+    """load_task() propagates needs on the selected task."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+name = "testproject"
+
+[tool.werr]
+task.build = ["make"]
+task.test = [
+    {needs = "build"},
+    "pytest",
+]
+"""
+    )
+
+    _, task = config.load_task(pyproject, cli_task="test")
+
+    assert task.dependency is not None
+    assert task.dependency.name == "build"
